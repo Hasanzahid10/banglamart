@@ -1,109 +1,39 @@
-# ==============================
 # Python
-# ==============================
-
 __pycache__/
 *.py[cod]
-*$py.class
 *.pyo
-*.pyd
 
-# ==============================
-# Virtual Environment
-# ==============================
-
-venv/
+# Virtual environment
 env/
+venv/
 .venv/
-.env/
-ENV/
 
-# ==============================
-# Environment Variables / Secrets
-# ==============================
-
+# Environment variables
 .env
 .env.*
-!.env.example
 
-# ==============================
 # Django
-# ==============================
-
 *.log
 db.sqlite3
-db.sqlite3-journal
-
-# Django static/media
-staticfiles/
 media/
+staticfiles/
 
-# ==============================
-# Django migrations
-# ==============================
-# DO NOT ignore migrations in a real project.
-# Keep migration files in Git.
+# Celery
+celerybeat-schedule
+celerybeat-schedule.dat
+**/celerybeat-schedule*
 
-# ==============================
-# IDE / Editors
-# ==============================
-
+# IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
 
-# ==============================
 # OS
-# ==============================
-
 .DS_Store
 Thumbs.db
 
-# ==============================
-# Testing / Coverage
-# ==============================
-
+# Coverage
 .coverage
-coverage.xml
 htmlcov/
+
+# Pytest
 .pytest_cache/
-.mypy_cache/
-
-# ==============================
-# Build / Distribution
-# ==============================
-
-build/
-dist/
-*.egg-info/
-.eggs/
-
-# ==============================
-# Jupyter
-# ==============================
-
-.ipynb_checkpoints/
-
-# ==============================
-# PostgreSQL
-# ==============================
-
-*.sql
-*.dump
-
-# ==============================
-# Local development
-# ==============================
-
-*.pid
-*.seed
-
-# ==============================
-# Temporary files
-# ==============================
-
-*.tmp
-*.temp
-*.bak
