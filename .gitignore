@@ -1,0 +1,109 @@
+# ==============================
+# Python
+# ==============================
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# ==============================
+# Virtual Environment
+# ==============================
+
+venv/
+env/
+.venv/
+.env/
+ENV/
+
+# ==============================
+# Environment Variables / Secrets
+# ==============================
+
+.env
+.env.*
+!.env.example
+
+# ==============================
+# Django
+# ==============================
+
+*.log
+db.sqlite3
+db.sqlite3-journal
+
+# Django static/media
+staticfiles/
+media/
+
+# ==============================
+# Django migrations
+# ==============================
+# DO NOT ignore migrations in a real project.
+# Keep migration files in Git.
+
+# ==============================
+# IDE / Editors
+# ==============================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ==============================
+# OS
+# ==============================
+
+.DS_Store
+Thumbs.db
+
+# ==============================
+# Testing / Coverage
+# ==============================
+
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# ==============================
+# Build / Distribution
+# ==============================
+
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ==============================
+# Jupyter
+# ==============================
+
+.ipynb_checkpoints/
+
+# ==============================
+# PostgreSQL
+# ==============================
+
+*.sql
+*.dump
+
+# ==============================
+# Local development
+# ==============================
+
+*.pid
+*.seed
+
+# ==============================
+# Temporary files
+# ==============================
+
+*.tmp
+*.temp
+*.bak
