@@ -23,6 +23,8 @@ from .serializers import (
 )
 
 
+from drf_spectacular.utils import extend_schema
+
 User = get_user_model()
 
 
@@ -40,11 +42,13 @@ class AuthViewSet(viewsets.ViewSet):
     """
 
     permission_classes = [permissions.AllowAny]
+    serializer_class = RegisterSerializer
 
     # =========================================================
     # REGISTER
     # =========================================================
 
+    @extend_schema(request=RegisterSerializer)
     @action(
         detail=False,
         methods=["post"],
@@ -92,6 +96,7 @@ class AuthViewSet(viewsets.ViewSet):
     # LOGIN
     # =========================================================
 
+    @extend_schema(request=CustomTokenObtainPairSerializer)
     @action(
         detail=False,
         methods=["post"],
@@ -139,6 +144,7 @@ class AuthViewSet(viewsets.ViewSet):
     # REFRESH TOKEN
     # =========================================================
 
+    @extend_schema(request=TokenRefreshSerializer)
     @action(
         detail=False,
         methods=["post"],
@@ -162,6 +168,7 @@ class AuthViewSet(viewsets.ViewSet):
     # SEND OTP
     # =========================================================
 
+    @extend_schema(request=SendOTPSerializer)
     @action(
         detail=False,
         methods=["post"],
@@ -259,6 +266,7 @@ class AuthViewSet(viewsets.ViewSet):
     # VERIFY OTP
     # =========================================================
 
+    @extend_schema(request=VerifyOTPSerializer)
     @action(
         detail=False,
         methods=["post"],
@@ -432,6 +440,7 @@ class AuthViewSet(viewsets.ViewSet):
     # REQUEST PASSWORD RESET OTP
     # =========================================================
 
+    @extend_schema(request=RequestPasswordResetSerializer)
     @action(
         detail=False,
         methods=["post"],
@@ -541,6 +550,7 @@ class AuthViewSet(viewsets.ViewSet):
     # CONFIRM PASSWORD RESET
     # =========================================================
 
+    @extend_schema(request=ResetPasswordWithOTPSerializer)
     @action(
         detail=False,
         methods=["post"],

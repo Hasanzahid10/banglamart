@@ -58,6 +58,9 @@ class RegionAdminProfileViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = RegionAdminProfileSerializer
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False) or not self.request.user.is_authenticated:
+            return RegionAdminProfile.objects.none()
+
         return RegionAdminProfile.objects.filter(
             user=self.request.user
         ).select_related(
@@ -82,7 +85,12 @@ class RegionViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = RegionSerializer
 
     def get_queryset(self):
-        profile = self.request.user.region_profile
+        if getattr(self, "swagger_fake_view", False) or not self.request.user.is_authenticated:
+            return Region.objects.none()
+
+        profile = getattr(self.request.user, "region_profile", None)
+        if not profile:
+            return Region.objects.none()
 
         return Region.objects.filter(
             id=profile.assigned_region_id,
@@ -104,7 +112,14 @@ class AdminDarkStoreViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AdminDarkStoreSerializer
 
     def get_queryset(self):
-        region = self.request.user.region_profile.assigned_region
+        if getattr(self, "swagger_fake_view", False) or not self.request.user.is_authenticated:
+            return DarkStore.objects.none()
+
+        profile = getattr(self.request.user, "region_profile", None)
+        if not profile:
+            return DarkStore.objects.none()
+
+        region = profile.assigned_region
 
         return (
             DarkStore.objects

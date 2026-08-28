@@ -65,6 +65,8 @@ class SuperAdminViewSet(viewsets.ViewSet):
 
     permission_classes = [IsSuperAdmin]
 
+    serializer_class = GlobalPlatformConfigSerializer
+
     # ========================================================
     # PLATFORM CONFIG
     # ========================================================

@@ -18,6 +18,8 @@ class WishlistViewSet(viewsets.ViewSet):
         permissions.IsAuthenticated
     ]
 
+    serializer_class = WishlistSerializer
+
     # =========================================================
     # GET /api/wishlist/
     # =========================================================

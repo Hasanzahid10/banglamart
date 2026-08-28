@@ -19,6 +19,8 @@ class ProfileViewSet(viewsets.ViewSet):
         permissions.IsAuthenticated
     ]
 
+    serializer_class = UserProfileSerializer
+
     parser_classes = (
         JSONParser,
         MultiPartParser,
@@ -169,6 +171,9 @@ class AddressViewSet(viewsets.ModelViewSet):
     )
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False) or not self.request.user.is_authenticated:
+            return Address.objects.none()
+
         return Address.objects.filter(
             user=self.request.user
         ).order_by(

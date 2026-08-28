@@ -54,6 +54,8 @@ class PaymentViewSet(viewsets.ViewSet):
         permissions.IsAuthenticated
     ]
 
+    serializer_class = InitiatePaymentSerializer
+
     # ==========================================================
     # INITIATE PAYMENT
     # ==========================================================

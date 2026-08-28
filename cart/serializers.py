@@ -63,7 +63,7 @@ class CartItemSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
-    in_stock = serializers.ReadOnlyField()
+    in_stock = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = CartItem
@@ -421,6 +421,6 @@ class CartSerializer(serializers.ModelSerializer):
 
         read_only_fields = fields
 
-    def get_total_unique_items(self, obj):
+    def get_total_unique_items(self, obj) -> int:
 
         return obj.items.count()

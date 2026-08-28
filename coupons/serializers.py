@@ -30,7 +30,7 @@ class CouponSerializer(serializers.ModelSerializer):
             "is_valid",
         )
 
-    def get_is_valid(self, obj):
+    def get_is_valid(self, obj) -> bool:
         valid, _ = obj.is_valid_now
         return valid
 

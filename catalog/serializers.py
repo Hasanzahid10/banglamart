@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import Category
+from drf_spectacular.utils import extend_schema_field
 
 
 class SubCategorySerializer(serializers.ModelSerializer):
@@ -44,6 +45,9 @@ class SubCategorySerializer(serializers.ModelSerializer):
         ).data
 
 
+SubCategorySerializer.get_children = extend_schema_field(SubCategorySerializer(many=True))(SubCategorySerializer.get_children)
+
+
 class CategoryTreeSerializer(serializers.ModelSerializer):
     """
     Root category tree serializer.
@@ -74,6 +78,7 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
             "id",
         ]
 
+    @extend_schema_field(SubCategorySerializer(many=True))
     def get_children(self, obj):
         children = obj.get_children().filter(
             is_active=True

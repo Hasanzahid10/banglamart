@@ -73,7 +73,7 @@ class ProductReviewSerializer(serializers.ModelSerializer):
             "updated_at",
         )
 
-    def get_user_name(self, obj):
+    def get_user_name(self, obj) -> str:
 
         user = obj.user
 

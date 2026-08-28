@@ -1,3 +1,4 @@
+from decimal import Decimal
 from rest_framework import serializers
 
 from products.models import Product, ProductInventory
@@ -87,7 +88,7 @@ class WishlistItemSerializer(serializers.ModelSerializer):
     # STOCK
     # --------------------------------------------------------
 
-    def get_is_in_stock(self, obj):
+    def get_is_in_stock(self, obj) -> bool:
 
         dark_store = self._get_dark_store()
 
@@ -105,7 +106,7 @@ class WishlistItemSerializer(serializers.ModelSerializer):
     # PRICE
     # --------------------------------------------------------
 
-    def get_current_price(self, obj):
+    def get_current_price(self, obj) -> Decimal | None:
 
         dark_store = self._get_dark_store()
 

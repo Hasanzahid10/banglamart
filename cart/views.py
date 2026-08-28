@@ -15,6 +15,9 @@ from .serializers import (
 )
 
 
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+
+
 class CartViewSet(viewsets.ViewSet):
     """
     Customer cart management.
@@ -31,6 +34,8 @@ class CartViewSet(viewsets.ViewSet):
     permission_classes = [
         permissions.IsAuthenticated
     ]
+
+    serializer_class = CartSerializer
 
     # =========================================================
     # GET /api/cart/
@@ -70,6 +75,10 @@ class CartViewSet(viewsets.ViewSet):
     # ADD ITEM
     # =========================================================
 
+    @extend_schema(
+        request=AddToCartSerializer,
+        responses={200: CartSerializer}
+    )
     @action(
         detail=False,
         methods=["post"],
@@ -255,6 +264,13 @@ class CartViewSet(viewsets.ViewSet):
     # UPDATE QUANTITY
     # =========================================================
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("item_id", OpenApiTypes.UUID, OpenApiParameter.PATH, description="The UUID of the cart item to update.")
+        ],
+        request=UpdateCartItemSerializer,
+        responses={200: CartSerializer}
+    )
     @action(
         detail=False,
         methods=["patch"],
@@ -395,6 +411,12 @@ class CartViewSet(viewsets.ViewSet):
     # REMOVE ITEM
     # =========================================================
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("item_id", OpenApiTypes.UUID, OpenApiParameter.PATH, description="The UUID of the cart item to remove.")
+        ],
+        responses={200: CartSerializer}
+    )
     @action(
         detail=False,
         methods=["delete"],
@@ -441,6 +463,9 @@ class CartViewSet(viewsets.ViewSet):
     # CLEAR CART
     # =========================================================
 
+    @extend_schema(
+        responses={200: CartSerializer}
+    )
     @action(
         detail=False,
         methods=["delete"],

@@ -1,3 +1,4 @@
+from decimal import Decimal
 from rest_framework import serializers
 
 from .models import Product, ProductInventory
@@ -63,7 +64,7 @@ class ProductInventorySerializer(
     # SELLING PRICE
     # =====================================================
 
-    def get_selling_price(self, obj):
+    def get_selling_price(self, obj) -> Decimal:
 
         return obj.selling_price
 
@@ -71,7 +72,7 @@ class ProductInventorySerializer(
     # STOCK
     # =====================================================
 
-    def get_in_stock(self, obj):
+    def get_in_stock(self, obj) -> bool:
 
         return obj.in_stock
 
@@ -79,7 +80,7 @@ class ProductInventorySerializer(
     # LOW STOCK
     # =====================================================
 
-    def get_is_low_stock(self, obj):
+    def get_is_low_stock(self, obj) -> bool:
 
         return obj.is_low_stock
 
@@ -157,7 +158,7 @@ class ProductSerializer(
     # SELLING PRICE
     # =====================================================
 
-    def get_selling_price(self, obj):
+    def get_selling_price(self, obj) -> Decimal:
 
         """
         Return the price for the currently selected
@@ -252,19 +253,19 @@ class CustomerProductSerializer(serializers.ModelSerializer):
             )
         return obj.inventories.first()
 
-    def get_selling_price(self, obj):
+    def get_selling_price(self, obj) -> Decimal:
         inventory = self._get_local_inventory(obj)
         if inventory:
             return inventory.selling_price
         return obj.base_price
 
-    def get_in_stock(self, obj):
+    def get_in_stock(self, obj) -> bool:
         inventory = self._get_local_inventory(obj)
         if inventory:
             return inventory.in_stock
         return False
 
-    def get_stock_qty(self, obj):
+    def get_stock_qty(self, obj) -> int:
         inventory = self._get_local_inventory(obj)
         if inventory:
             return inventory.stock_qty

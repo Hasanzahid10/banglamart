@@ -67,6 +67,8 @@ class RiderViewSet(viewsets.ViewSet):
         IsRiderUser
     ]
 
+    serializer_class = RiderProfileSerializer
+
     # -----------------------------------------------------
     # GET /api/riders/profile/
     # -----------------------------------------------------
@@ -318,6 +320,10 @@ class DeliveryTaskViewSet(
     # -----------------------------------------------------
 
     def get_queryset(self):
+        user = self.request.user
+
+        if getattr(self, "swagger_fake_view", False) or not user.is_authenticated:
+            return DeliveryTask.objects.none()
 
         queryset = (
             DeliveryTask.objects
@@ -332,13 +338,11 @@ class DeliveryTaskViewSet(
             .order_by("-created_at")
         )
 
-        user = self.request.user
-
         # -------------------------------------------------
         # ADMIN
         # -------------------------------------------------
 
-        if user.role == "ADMIN":
+        if getattr(user, "role", None) == "ADMIN":
             return queryset
 
         # -------------------------------------------------

@@ -242,7 +242,7 @@ class DeliveryTaskSerializer(
             "updated_at",
         )
 
-    def get_rider_name(self, obj):
+    def get_rider_name(self, obj) -> str | None:
         """
         Safely return rider's display name.
         """

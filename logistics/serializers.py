@@ -606,7 +606,7 @@ class DeliveryOrderSerializer(
     # RIDER NAME
     # =========================================================
 
-    def get_rider_name(self, obj):
+    def get_rider_name(self, obj) -> str | None:
 
         if not obj.rider:
             return None
@@ -617,7 +617,7 @@ class DeliveryOrderSerializer(
     # LATITUDE
     # =========================================================
 
-    def get_latitude(self, obj):
+    def get_latitude(self, obj) -> float | None:
 
         if not obj.location:
             return None
@@ -628,7 +628,7 @@ class DeliveryOrderSerializer(
     # LONGITUDE
     # =========================================================
 
-    def get_longitude(self, obj):
+    def get_longitude(self, obj) -> float | None:
 
         if not obj.location:
             return None

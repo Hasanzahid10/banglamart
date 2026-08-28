@@ -11,6 +11,7 @@ from .cache import (
 )
 from .models import Category
 from .serializers import CategoryTreeSerializer
+from drf_spectacular.utils import extend_schema
 
 
 class CategoryListView(APIView):
@@ -25,7 +26,12 @@ class CategoryListView(APIView):
     permission_classes = [
         permissions.AllowAny,
     ]
+    serializer_class = CategoryTreeSerializer
 
+    @extend_schema(
+        operation_id="catalog_categories_list",
+        responses={200: CategoryTreeSerializer}
+    )
     def get(self, request, *args, **kwargs):
 
         # --------------------------------
@@ -106,7 +112,12 @@ class CategoryDetailView(APIView):
     permission_classes = [
         permissions.AllowAny,
     ]
+    serializer_class = CategoryTreeSerializer
 
+    @extend_schema(
+        operation_id="catalog_categories_retrieve",
+        responses={200: CategoryTreeSerializer}
+    )
     def get(
         self,
         request,
