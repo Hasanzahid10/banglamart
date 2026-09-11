@@ -1,16 +1,23 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import ProfileViewSet, AddressViewSet
+from .views import ProfileViewSet, AddressViewSet, AdminCustomerViewSet
 
 
 router = DefaultRouter()
+
+router.register(
+    r"admin/customers",
+    AdminCustomerViewSet,
+    basename="admin-customers",
+)
 
 router.register(
     r"addresses",
     AddressViewSet,
     basename="address",
 )
+
 
 
 profile_view = ProfileViewSet.as_view({

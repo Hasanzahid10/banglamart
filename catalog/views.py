@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from django.core.cache import cache
 
 from rest_framework import permissions, status
@@ -10,17 +11,16 @@ from .cache import (
     category_detail_cache_key,
 )
 from .models import Category
-from .serializers import CategoryTreeSerializer
+from .serializers import CategoryTreeSerializer, CategoryCreateUpdateSerializer
 from drf_spectacular.utils import extend_schema
 
 
 class CategoryListView(APIView):
     """
     GET /api/catalog/categories/
+    POST /api/catalog/categories/
 
-    Returns the complete active category tree.
-
-    Public endpoint.
+    Returns/Creates categories and sub-categories in active category tree.
     """
 
     permission_classes = [
@@ -97,6 +97,116 @@ class CategoryListView(APIView):
             data,
             status=status.HTTP_200_OK,
         )
+
+    @extend_schema(
+        operation_id="catalog_categories_create",
+        request=CategoryCreateUpdateSerializer,
+        responses={201: CategoryCreateUpdateSerializer}
+    )
+    def post(self, request, *args, **kwargs):
+        data = request.data.copy()
+
+        parent_val = data.get("parent")
+        
+        # Helper to ensure Food root category exists
+        def get_or_create_food_root():
+            food_root, _ = Category.objects.get_or_create(
+                slug="food",
+                defaults={
+                    "name_en": "Food",
+                    "name_bn": "খাদ্যসামগ্রী",
+                    "parent": None,
+                    "display_order": 1,
+                    "is_active": True,
+                    "is_featured": True,
+                }
+            )
+            return food_root
+
+        name_en = data.get("name_en", "")
+        is_creating_food = str(name_en).strip().lower() == "food" or str(data.get("slug", "")).strip().lower() == "food"
+
+        if is_creating_food:
+            data["parent"] = None
+        elif not parent_val or parent_val in ("null", "undefined", None, ""):
+            food_root = get_or_create_food_root()
+            data["parent"] = food_root.id
+        else:
+            try:
+                parent_id = int(parent_val)
+                if not Category.objects.filter(pk=parent_id).exists():
+                    food_root = get_or_create_food_root()
+                    data["parent"] = food_root.id
+            except (ValueError, TypeError):
+                food_root = get_or_create_food_root()
+                data["parent"] = food_root.id
+
+        serializer = CategoryCreateUpdateSerializer(data=data, context={"request": request})
+        if serializer.is_valid():
+            category = serializer.save()
+
+            # Rebuild MPTT tree structure
+            try:
+                Category.objects.rebuild()
+            except Exception:
+                pass
+
+            # Invalidate Redis category cache
+            cache.delete(CATEGORY_LIST_CACHE_KEY)
+
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+class CategoryAdminDetailView(APIView):
+    """
+    GET /api/catalog/categories/id/<int:pk>/
+    PUT /api/catalog/categories/id/<int:pk>/
+    PATCH /api/catalog/categories/id/<int:pk>/
+    DELETE /api/catalog/categories/id/<int:pk>/
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get_object(self, pk):
+        try:
+            return Category.objects.get(pk=pk)
+        except Category.DoesNotExist:
+            return None
+
+    def get(self, request, pk, *args, **kwargs):
+        category = self.get_object(pk)
+        if not category:
+            return Response({"detail": "Category not found."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = CategoryCreateUpdateSerializer(category, context={"request": request})
+        return Response(serializer.data)
+
+    def put(self, request, pk, *args, **kwargs):
+        category = self.get_object(pk)
+        if not category:
+            return Response({"detail": "Category not found."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = CategoryCreateUpdateSerializer(category, data=request.data, partial=True, context={"request": request})
+        if serializer.is_valid():
+            serializer.save()
+            cache.delete(CATEGORY_LIST_CACHE_KEY)
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk, *args, **kwargs):
+        return self.put(request, pk, *args, **kwargs)
+
+    def delete(self, request, pk, *args, **kwargs):
+        category = self.get_object(pk)
+        if not category:
+            return Response({"detail": "Category not found."}, status=status.HTTP_404_NOT_FOUND)
+        category.delete()
+        cache.delete(CATEGORY_LIST_CACHE_KEY)
+        return Response({"detail": "Category deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 
 class CategoryDetailView(APIView):

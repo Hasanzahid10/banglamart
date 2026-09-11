@@ -37,6 +37,19 @@ class UserProfile(models.Model):
         blank=True,
     )
 
+    GENDER_CHOICES = [
+        ("Male", "Male"),
+        ("Female", "Female"),
+        ("Other", "Other"),
+    ]
+
+    gender = models.CharField(
+        max_length=10,
+        choices=GENDER_CHOICES,
+        null=True,
+        blank=True,
+    )
+
     alternate_phone = models.CharField(
         max_length=15,
         null=True,
@@ -134,19 +147,17 @@ class Address(models.Model):
     latitude = models.DecimalField(
         max_digits=9,
         decimal_places=6,
-        validators=[
-            MinValueValidator(-90),
-            MaxValueValidator(90),
-        ],
+        default=23.8103,
+        null=True,
+        blank=True,
     )
 
     longitude = models.DecimalField(
         max_digits=9,
         decimal_places=6,
-        validators=[
-            MinValueValidator(-180),
-            MaxValueValidator(180),
-        ],
+        default=90.4125,
+        null=True,
+        blank=True,
     )
 
     # =========================================================

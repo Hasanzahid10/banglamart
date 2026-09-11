@@ -1,7 +1,6 @@
 from decimal import Decimal
 from rest_framework import serializers
-
-from .models import Product, ProductInventory
+from .models import Product, ProductInventory, ProductImage
 
 
 # =========================================================
@@ -85,6 +84,12 @@ class ProductInventorySerializer(
         return obj.is_low_stock
 
 
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ["id", "image", "display_order"]
+
+
 # =========================================================
 # PRODUCT SERIALIZER
 # =========================================================
@@ -95,6 +100,13 @@ class ProductSerializer(
 
     category_name = serializers.CharField(
         source="category.name_en",
+        read_only=True,
+    )
+
+    parent_category_name = serializers.SerializerMethodField()
+
+    images = ProductImageSerializer(
+        many=True,
         read_only=True,
     )
 
@@ -119,6 +131,7 @@ class ProductSerializer(
             # Category
             "category",
             "category_name",
+            "parent_category_name",
 
             # Product information
             "name_en",
@@ -134,6 +147,7 @@ class ProductSerializer(
 
             # Media
             "image",
+            "images",
             "description",
 
             # Status
@@ -149,10 +163,17 @@ class ProductSerializer(
 
         read_only_fields = [
             "id",
+            "slug",
+            "sku",
             "selling_price",
             "created_at",
             "updated_at",
         ]
+
+    def get_parent_category_name(self, obj):
+        if obj.category and obj.category.parent:
+            return obj.category.parent.name_en
+        return None
 
     # =====================================================
     # SELLING PRICE

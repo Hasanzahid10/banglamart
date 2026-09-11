@@ -309,3 +309,72 @@ class CartItem(models.Model):
             f"{product_name} "
             f"in Cart {self.cart.id}"
         )
+
+
+class GuestCart(models.Model):
+    """
+    Tracks Guest sessions, cart activity, and guest to registered user conversion.
+    """
+    STATUS_CHOICES = [
+        ('ACTIVE', 'Active Guest Cart'),
+        ('CONVERTED', 'Converted to Registered User'),
+        ('ABANDONED', 'Abandoned Cart'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    guest_id = models.CharField(max_length=255, unique=True, db_index=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="guest_carts"
+    )
+    city = models.CharField(max_length=100, default='Dhaka')
+    ip_address = models.CharField(max_length=100, null=True, blank=True)
+    device_info = models.CharField(max_length=255, null=True, blank=True)
+    browser = models.CharField(max_length=100, null=True, blank=True)
+    os = models.CharField(max_length=100, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"Guest Cart ({self.guest_id}) - {self.status}"
+
+    @property
+    def total_price(self):
+        return sum(float(item.subtotal) for item in self.items.all())
+
+    @property
+    def total_items(self):
+        return sum(item.quantity for item in self.items.all())
+
+
+class GuestCartItem(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    guest_cart = models.ForeignKey(GuestCart, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey(
+        "products.Product",
+        on_delete=models.SET_NULL,
+        related_name="guest_cart_items",
+        null=True,
+        blank=True
+    )
+    product_name = models.CharField(max_length=255)
+    quantity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def subtotal(self):
+        if self.unit_price is None or self.quantity is None:
+            return 0.00
+        return self.unit_price * self.quantity
+
+    def __str__(self):
+        return f"{self.quantity}x {self.product_name} in Guest Cart {self.guest_cart.guest_id}"

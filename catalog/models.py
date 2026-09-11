@@ -113,7 +113,19 @@ class Category(MPTTModel):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name_en)
+            base_slug = slugify(self.name_en) if self.name_en else "category"
+            slug = base_slug
+            count = 1
+            qs = Category.objects.filter(slug=slug)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            while qs.exists():
+                slug = f"{base_slug}-{count}"
+                count += 1
+                qs = Category.objects.filter(slug=slug)
+                if self.pk:
+                    qs = qs.exclude(pk=self.pk)
+            self.slug = slug
 
         super().save(*args, **kwargs)
 

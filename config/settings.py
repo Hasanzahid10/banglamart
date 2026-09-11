@@ -165,44 +165,18 @@ AUTH_USER_MODEL = "authentication.User"
 
 
 # ============================================================
-# DATABASE
+# DATABASE (PostgreSQL + PostGIS Only)
 # ============================================================
 
 DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.postgis",
-
-        "NAME": os.getenv(
-            "DB_NAME",
-            "banglamartdb",
-        ),
-
-        "USER": os.getenv(
-            "DB_USERNAME",
-            "banglamart",
-        ),
-
-        "PASSWORD": os.getenv(
-            "DB_PASSWORD",
-            "",
-        ),
-
-        "HOST": os.getenv(
-            "DB_HOST",
-            "localhost",
-        ),
-
-        "PORT": os.getenv(
-            "DB_PORT",
-            "5432",
-        ),
-
-        "CONN_MAX_AGE": int(
-            os.getenv(
-                "DB_CONN_MAX_AGE",
-                "60",
-            )
-        ),
+        "NAME": os.getenv("DB_NAME", "banglamartdb"),
+        "USER": os.getenv("DB_USERNAME", "banglamart"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "banglamartpass"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
+        "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
     }
 }
 

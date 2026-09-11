@@ -47,6 +47,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
+            "gender",
             "avatar",
             "date_of_birth",
             "alternate_phone",
