@@ -290,7 +290,9 @@ class AdminCustomerViewSet(viewsets.ViewSet):
             addresses_data = AddressSerializer(addresses, many=True).data
 
             # Guest/User Cart
-            guest_carts = GuestCart.objects.filter(user=user).order_by('-updated_at')
+            guest_carts = GuestCart.objects.filter(user=user, status='ACTIVE').order_by('-updated_at')
+            if not guest_carts.exists():
+                guest_carts = GuestCart.objects.filter(user=user).order_by('-updated_at')
             if not guest_carts.exists() and getattr(user, 'email', None):
                 guest_carts = GuestCart.objects.filter(guest_id=user.email).order_by('-updated_at')
             if not guest_carts.exists() and getattr(user, 'phone_number', None):
@@ -298,7 +300,19 @@ class AdminCustomerViewSet(viewsets.ViewSet):
 
             cart_items = []
             cart_total = 0.0
-            if guest_carts.exists():
+
+            if hasattr(user, 'cart') and user.cart.items.exists():
+                cart_total = float(user.cart.total_price)
+                cart_items = [
+                    {
+                        'product_name': item.product.name_en if item.product else "Product",
+                        'quantity': item.quantity,
+                        'unit_price': float(item.unit_price),
+                        'subtotal': float(item.subtotal),
+                    }
+                    for item in user.cart.items.all()
+                ]
+            elif guest_carts.exists():
                 latest_cart = guest_carts.first()
                 cart_total = latest_cart.total_price
                 cart_items = [

@@ -500,6 +500,10 @@ from .models import GuestCart, GuestCartItem
 from .serializers import GuestCartSerializer
 
 
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
+
 class GuestCartSyncView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -513,6 +517,8 @@ class GuestCartSyncView(APIView):
         browser = request.data.get('browser', '')
         os_info = request.data.get('os', '')
         cart_items_data = request.data.get('cart_items', [])
+        user_email = request.data.get('user_email') or request.data.get('email')
+        user_phone = request.data.get('user_phone') or request.data.get('phone')
 
         # Extract client IP address
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -525,6 +531,18 @@ class GuestCartSyncView(APIView):
             guest_id=guest_id,
             defaults={'city': city, 'ip_address': ip_address, 'device_info': device_info, 'browser': browser, 'os': os_info}
         )
+
+        user = None
+        if request.user and request.user.is_authenticated:
+            user = request.user
+        elif user_email:
+            user = User.objects.filter(email__iexact=user_email).first()
+        elif user_phone:
+            user = User.objects.filter(phone_number=user_phone).first()
+
+        if user:
+            guest_cart.user = user
+            guest_cart.status = 'ACTIVE'
 
         guest_cart.city = city
         guest_cart.ip_address = ip_address
