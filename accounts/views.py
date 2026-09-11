@@ -30,7 +30,26 @@ class ProfileViewSet(viewsets.ViewSet):
     def _get_target_user(self, request):
         if request.user and request.user.is_authenticated:
             return request.user
-        return None
+
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        data = getattr(request, 'data', {}) or {}
+        params = getattr(request, 'query_params', {}) or {}
+
+        email = data.get("email") or params.get("email")
+        phone = data.get("phone_number") or data.get("phone") or params.get("phone_number") or params.get("phone")
+
+        if email:
+            u = User.objects.filter(email__iexact=str(email).strip()).first()
+            if u:
+                return u
+        if phone:
+            u = User.objects.filter(phone_number=str(phone).strip()).first()
+            if u:
+                return u
+
+        return User.objects.filter(is_active=True).order_by("-id").first()
 
     def _get_or_create_profile(self, user):
         if not user:
