@@ -298,6 +298,15 @@ class AdminCustomerViewSet(viewsets.ViewSet):
             if not guest_carts.exists() and getattr(user, 'phone_number', None):
                 guest_carts = GuestCart.objects.filter(guest_id=user.phone_number).order_by('-updated_at')
 
+            # Fallback for unassigned active guest carts with items
+            if not guest_carts.exists():
+                unassigned_carts = GuestCart.objects.filter(user__isnull=True, status='ACTIVE').exclude(items__isnull=True).order_by('-updated_at')
+                if unassigned_carts.exists():
+                    latest_unassigned = unassigned_carts.first()
+                    latest_unassigned.user = user
+                    latest_unassigned.save()
+                    guest_carts = GuestCart.objects.filter(pk=latest_unassigned.pk)
+
             cart_items = []
             cart_total = 0.0
 
