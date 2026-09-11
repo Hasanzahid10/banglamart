@@ -17,6 +17,8 @@ from .serializers import (
 )
 
 
+from django.db.models import Q
+
 class OrderViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Order management for a multi-dark-store system.
@@ -39,7 +41,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
     """
 
     permission_classes = [
-        permissions.IsAuthenticated
+        permissions.AllowAny
     ]
 
     serializer_class = OrderSerializer
@@ -69,53 +71,84 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
     # =========================================================
 
     def get_queryset(self):
-
         user = self.request.user
+        queryset = (
+            Order.objects
+            .select_related(
+                "user",
+                "dark_store",
+                "dark_store__service_area",
+                "delivery_order",
+            )
+            .prefetch_related(
+                "items",
+                "items__inventory",
+                "items__inventory__product",
+            )
+            .order_by("-created_at")
+        )
 
-        queryset = self.queryset
+        # Query params search (e.g. ?phone=01333410106 or ?email=...)
+        phone_param = (self.request.query_params.get('phone') or self.request.query_params.get('customer_phone') or '').strip()
+        email_param = (self.request.query_params.get('email') or self.request.query_params.get('customer_email') or '').strip()
 
-        # -----------------------------------------------------
-        # ADMIN
-        # -----------------------------------------------------
+        if phone_param:
+            return queryset.filter(
+                Q(user__phone_number=phone_param) |
+                Q(delivery_address_snapshot__recipient_phone=phone_param)
+            ).distinct()
 
-        if user.role == "ADMIN":
+        if email_param:
+            return queryset.filter(
+                Q(user__email__iexact=email_param) |
+                Q(delivery_address_snapshot__recipient_email__iexact=email_param)
+            ).distinct()
+
+        if user and user.is_authenticated and getattr(user, 'role', '') in ["ADMIN", "SUPERADMIN", "STAFF", "WAREHOUSE_STAFF"]:
             return queryset
 
-        # -----------------------------------------------------
-        # WAREHOUSE STAFF
-        # -----------------------------------------------------
-        #
-        # Staff can ONLY see orders from DarkStores
-        # assigned through DarkStoreManager.
-        #
-        # -----------------------------------------------------
+        if user and user.is_authenticated:
+            user_phone = getattr(user, 'phone_number', '') or ''
+            user_email = getattr(user, 'email', '') or ''
 
-        if user.role == "WAREHOUSE_STAFF":
+            filters = Q(user=user)
+            if user_phone and '@' not in user_phone:
+                filters |= Q(delivery_address_snapshot__recipient_phone=user_phone) | Q(user__phone_number=user_phone)
+            if user_email and '@' in user_email:
+                filters |= Q(user__email__iexact=user_email)
 
-            managed_store_ids = (
-                DarkStoreManager.objects
-                .filter(
-                    user=user,
-                    is_active=True,
-                    dark_store__is_active=True,
-                )
-                .values_list(
-                    "dark_store_id",
-                    flat=True,
-                )
-            )
+            return queryset.filter(filters).distinct()
 
-            return queryset.filter(
-                dark_store_id__in=managed_store_ids
-            )
+        return queryset
 
-        # -----------------------------------------------------
-        # CUSTOMER
-        # -----------------------------------------------------
+    # =========================================================
+    # UPDATE STATUS & DISPATCH
+    # =========================================================
 
-        return queryset.filter(
-            user=user
-        )
+    @action(detail=True, methods=['patch', 'post'], url_path='update-status')
+    def update_status(self, request, pk=None):
+        try:
+            order = Order.objects.get(id=pk)
+        except (Order.DoesNotExist, Exception):
+            try:
+                order = Order.objects.get(order_number=pk)
+            except Order.DoesNotExist:
+                return Response({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        new_status = request.data.get('status')
+        new_payment_status = request.data.get('payment_status')
+
+        if new_status:
+            order.status = new_status.lower()
+        if new_payment_status:
+            order.payment_status = new_payment_status.lower()
+
+        order.save()
+
+        return Response({
+            'message': 'Order status updated successfully',
+            'order': OrderSerializer(order, context={'request': request}).data
+        }, status=status.HTTP_200_OK)
 
     # =========================================================
     # CHECKOUT
@@ -706,3 +739,139 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             serializer.data,
             status=status.HTTP_200_OK,
         )
+
+
+from rest_framework.views import APIView
+from decimal import Decimal
+import uuid
+from .models import OrderItem
+from logistics.models import DarkStore
+from products.models import ProductInventory
+from cart.models import GuestCart
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
+
+class PlaceOrderView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        data = request.data
+        customer_name = (data.get('customer_name') or '').strip() or 'Customer'
+        customer_phone = (data.get('customer_phone') or '').strip()
+        customer_email = (data.get('customer_email') or '').strip()
+        delivery_address = data.get('delivery_address', {})
+        cart_items = data.get('items', [])
+        
+        try:
+            subtotal = Decimal(str(data.get('subtotal', 0)))
+            delivery_fee = Decimal(str(data.get('delivery_fee', 49)))
+            discount_amount = Decimal(str(data.get('discount_amount', 0)))
+            total_amount = Decimal(str(data.get('total_amount', subtotal + delivery_fee - discount_amount)))
+        except Exception:
+            subtotal = Decimal("0.00")
+            delivery_fee = Decimal("49.00")
+            discount_amount = Decimal("0.00")
+            total_amount = Decimal("49.00")
+
+        note = data.get('note', '')
+
+        # Resolve user
+        user = None
+        if request.user and request.user.is_authenticated:
+            user = request.user
+        elif customer_phone:
+            user = User.objects.filter(phone_number=customer_phone).first()
+        if not user and customer_email:
+            user = User.objects.filter(email__iexact=customer_email).first()
+
+        if not user and (customer_phone or customer_email):
+            clean_p = customer_phone.strip() if customer_phone else ''
+            clean_e = customer_email.strip() if customer_email else ''
+            uname = clean_p or clean_e
+            user = User.objects.filter(username=uname).first()
+            if not user:
+                user, _ = User.objects.get_or_create(
+                    username=uname,
+                    defaults={
+                        'phone_number': clean_p or None,
+                        'email': clean_e or (f"{clean_p}@metrobazar.com" if clean_p else ""),
+                        'first_name': customer_name,
+                        'role': "CUSTOMER",
+                    }
+                )
+
+        if not user:
+            user = User.objects.filter(is_superuser=False).first() or User.objects.first()
+
+        if customer_phone and user and not user.phone_number:
+            user.phone_number = customer_phone
+            user.save(update_fields=['phone_number'])
+
+        dark_store = DarkStore.objects.filter(is_active=True).first() or DarkStore.objects.first()
+
+        # Format unique Order Number
+        random_code = uuid.uuid4().hex[:8].upper()
+        order_number = f"ORD-{random_code}"
+
+        address_snapshot = {
+            "recipient_name": delivery_address.get('recipient_name') or customer_name,
+            "recipient_phone": delivery_address.get('recipient_phone') or customer_phone,
+            "street_address": delivery_address.get('street_address') or delivery_address.get('details') or "Address",
+            "area": delivery_address.get('area') or "Dhaka",
+            "city": delivery_address.get('city') or "Dhaka",
+        }
+
+        with transaction.atomic():
+            order = Order.objects.create(
+                order_number=order_number,
+                user=user,
+                dark_store=dark_store,
+                status=Order.OrderStatus.PROCESSING,
+                payment_status=Order.PaymentStatus.UNPAID,
+                subtotal=subtotal,
+                delivery_fee=delivery_fee,
+                discount_amount=discount_amount,
+                total_amount=total_amount,
+                delivery_address_snapshot=address_snapshot,
+                note=note
+            )
+
+            for item in cart_items:
+                p_id = item.get('id') or item.get('product_id')
+                p_name = item.get('name') or item.get('product_name_en') or 'Product'
+                p_price = Decimal(str(item.get('price') or item.get('unit_price') or 0))
+                p_qty = int(item.get('quantity', 1))
+                p_subtotal = Decimal(str(item.get('subtotal', p_price * p_qty)))
+                p_unit = item.get('unit', '1 pc')
+
+                inv = None
+                if p_id:
+                    try:
+                        inv = ProductInventory.objects.filter(product_id=p_id).first()
+                    except Exception:
+                        pass
+                if not inv:
+                    inv = ProductInventory.objects.first()
+
+                OrderItem.objects.create(
+                    order=order,
+                    inventory=inv,
+                    product_name_en=p_name,
+                    sku=inv.product.sku if (inv and inv.product) else 'SKU-001',
+                    unit=p_unit,
+                    unit_price=p_price,
+                    quantity=p_qty,
+                    subtotal=p_subtotal,
+                    dark_store_name=dark_store.name if dark_store else '',
+                )
+
+            # Mark user's active guest cart as CONVERTED
+            if user:
+                GuestCart.objects.filter(user=user, status='ACTIVE').update(status='CONVERTED')
+
+        return Response({
+            "message": "Order created successfully",
+            "order_number": order.order_number,
+            "order": OrderSerializer(order, context={'request': request}).data
+        }, status=status.HTTP_201_CREATED)

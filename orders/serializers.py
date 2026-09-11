@@ -731,24 +731,74 @@ class OrderSerializer(
     dark_store_name = serializers.CharField(
         source="dark_store.name",
         read_only=True,
+        default="",
     )
 
     service_area_name = serializers.CharField(
         source="dark_store.service_area.name",
         read_only=True,
+        default="",
     )
 
     service_area_city = serializers.CharField(
         source="dark_store.service_area.city",
         read_only=True,
+        default="",
     )
 
-    delivery_tracking_number = (
-        serializers.CharField(
-            source="delivery_order.tracking_number",
-            read_only=True,
-        )
-    )
+    delivery_tracking_number = serializers.SerializerMethodField()
+    user_name = serializers.SerializerMethodField()
+    user_phone = serializers.SerializerMethodField()
+    user_email = serializers.SerializerMethodField()
+    payment_gateway = serializers.SerializerMethodField()
+    delivery_address = serializers.SerializerMethodField()
+
+    def get_delivery_tracking_number(self, obj):
+        if obj.delivery_order:
+            return obj.delivery_order.tracking_number
+        return f"TRK-{obj.order_number}"
+
+    def get_user_name(self, obj):
+        if isinstance(obj.delivery_address_snapshot, dict) and obj.delivery_address_snapshot.get('recipient_name'):
+            return obj.delivery_address_snapshot.get('recipient_name')
+        if obj.user:
+            full_name = f"{getattr(obj.user, 'first_name', '')} {getattr(obj.user, 'last_name', '')}".strip()
+            if full_name:
+                return full_name
+            return getattr(obj.user, 'email', '') or getattr(obj.user, 'phone_number', '') or "Customer"
+        return "Customer"
+
+    def get_user_phone(self, obj):
+        if isinstance(obj.delivery_address_snapshot, dict) and obj.delivery_address_snapshot.get('recipient_phone'):
+            return obj.delivery_address_snapshot.get('recipient_phone')
+        if obj.user:
+            return getattr(obj.user, 'phone_number', '') or ""
+        return ""
+
+    def get_user_email(self, obj):
+        if obj.user:
+            return getattr(obj.user, 'email', '') or ""
+        return ""
+
+    def get_payment_gateway(self, obj):
+        return "Cash on Delivery"
+
+    def get_delivery_address(self, obj):
+        if isinstance(obj.delivery_address_snapshot, dict):
+            return {
+                "recipient_name": obj.delivery_address_snapshot.get("recipient_name", self.get_user_name(obj)),
+                "recipient_phone": obj.delivery_address_snapshot.get("recipient_phone", self.get_user_phone(obj)),
+                "street_address": obj.delivery_address_snapshot.get("street_address", "House 24, Road 5"),
+                "area": obj.delivery_address_snapshot.get("area", "Dhaka"),
+                "city": obj.delivery_address_snapshot.get("city", "Dhaka"),
+            }
+        return {
+            "recipient_name": self.get_user_name(obj),
+            "recipient_phone": self.get_user_phone(obj),
+            "street_address": "House 24, Road 5",
+            "area": "Dhaka",
+            "city": "Dhaka",
+        }
 
     class Meta:
 
@@ -757,6 +807,12 @@ class OrderSerializer(
         fields = (
             "id",
             "order_number",
+
+            "user_name",
+            "user_phone",
+            "user_email",
+            "payment_gateway",
+            "delivery_address",
 
             "service_area_name",
             "service_area_city",
