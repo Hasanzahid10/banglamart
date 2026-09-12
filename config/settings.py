@@ -48,7 +48,7 @@ if not SECRET_KEY:
 
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,metrobazar.online,admin.metrobazar.online,api.metrobazar.online,.metrobazar.online,*").split(",")
     if host.strip()
 ]
 
@@ -290,11 +290,14 @@ REST_FRAMEWORK = {
 # CORS
 # ============================================================
 
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CORS_ALLOWED_ORIGINS",
-        "",
+        "http://localhost:3000,http://localhost:5173,https://metrobazar.online,https://admin.metrobazar.online,https://api.metrobazar.online",
     ).split(",")
     if origin.strip()
 ]
@@ -308,7 +311,7 @@ CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CSRF_TRUSTED_ORIGINS",
-        "",
+        "http://localhost:3000,http://localhost:5173,https://metrobazar.online,https://admin.metrobazar.online,https://api.metrobazar.online",
     ).split(",")
     if origin.strip()
 ]
