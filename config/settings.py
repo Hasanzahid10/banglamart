@@ -48,7 +48,7 @@ if not SECRET_KEY:
 
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,metrobazar.online,admin.metrobazar.online,api.metrobazar.online,.metrobazar.online,*").split(",")
     if host.strip()
 ]
 
@@ -165,44 +165,18 @@ AUTH_USER_MODEL = "authentication.User"
 
 
 # ============================================================
-# DATABASE
+# DATABASE (PostgreSQL + PostGIS Only)
 # ============================================================
 
 DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.postgis",
-
-        "NAME": os.getenv(
-            "DB_NAME",
-            "banglamartdb",
-        ),
-
-        "USER": os.getenv(
-            "DB_USERNAME",
-            "banglamart",
-        ),
-
-        "PASSWORD": os.getenv(
-            "DB_PASSWORD",
-            "",
-        ),
-
-        "HOST": os.getenv(
-            "DB_HOST",
-            "localhost",
-        ),
-
-        "PORT": os.getenv(
-            "DB_PORT",
-            "5432",
-        ),
-
-        "CONN_MAX_AGE": int(
-            os.getenv(
-                "DB_CONN_MAX_AGE",
-                "60",
-            )
-        ),
+        "NAME": os.getenv("DB_NAME", "banglamartdb"),
+        "USER": os.getenv("DB_USERNAME", "banglamart"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "banglamartpass"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
+        "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
     }
 }
 
@@ -316,11 +290,14 @@ REST_FRAMEWORK = {
 # CORS
 # ============================================================
 
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CORS_ALLOWED_ORIGINS",
-        "",
+        "http://localhost:3000,http://localhost:5173,https://metrobazar.online,https://admin.metrobazar.online,https://api.metrobazar.online",
     ).split(",")
     if origin.strip()
 ]
@@ -334,7 +311,7 @@ CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CSRF_TRUSTED_ORIGINS",
-        "",
+        "http://localhost:3000,http://localhost:5173,https://metrobazar.online,https://admin.metrobazar.online,https://api.metrobazar.online",
     ).split(",")
     if origin.strip()
 ]

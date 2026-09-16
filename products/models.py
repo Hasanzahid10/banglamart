@@ -127,10 +127,67 @@ class Product(models.Model):
             ),
         ]
 
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from django.utils.text import slugify
+            base_slug = slugify(self.name_en) if self.name_en else "product"
+            slug = base_slug
+            count = 1
+            qs = Product.objects.filter(slug=slug)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            while qs.exists():
+                slug = f"{base_slug}-{count}"
+                count += 1
+                qs = Product.objects.filter(slug=slug)
+                if self.pk:
+                    qs = qs.exclude(pk=self.pk)
+            self.slug = slug
+
+        if not self.sku:
+            import uuid
+            self.sku = f"SKU-MB-{uuid.uuid4().hex[:8].upper()}"
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return (
             f"{self.name_en} ({self.unit})"
         )
+
+
+# =========================================================
+# PRODUCT GALLERY IMAGES
+# =========================================================
+
+class ProductImage(models.Model):
+    """
+    Multiple gallery images for a Product.
+    """
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="images",
+    )
+
+    image = models.ImageField(
+        upload_to="products/gallery/",
+    )
+
+    display_order = models.PositiveIntegerField(
+        default=0,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        ordering = ["display_order", "id"]
+
+    def __str__(self):
+        return f"Gallery Image for {self.product.name_en}"
 
 
 # =========================================================

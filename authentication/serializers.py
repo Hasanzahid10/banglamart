@@ -126,18 +126,12 @@ class RegisterSerializer(serializers.ModelSerializer):
             )
 
         # ---------------------------------------------
-        # Django password validation
+        # Password validation (at least 4 chars)
         # ---------------------------------------------
-
-        try:
-            validate_password(
-                password,
-                user=None,
-            )
-        except DjangoValidationError as error:
+        if len(password) < 4:
             raise serializers.ValidationError(
                 {
-                    "password": list(error.messages)
+                    "password": ["Password must be at least 4 characters long."]
                 }
             )
 
@@ -265,10 +259,17 @@ class CustomTokenObtainPairSerializer(
     """
 
     identifier = serializers.CharField(
+        required=False,
+        allow_blank=True,
         help_text=(
             "Enter your registered phone number "
             "or email address."
         )
+    )
+
+    identity = serializers.CharField(
+        required=False,
+        allow_blank=True,
     )
 
     password = serializers.CharField(
@@ -277,23 +278,25 @@ class CustomTokenObtainPairSerializer(
     )
 
     def validate(self, attrs):
-        identifier = attrs.get(
-            "identifier"
-        ).strip()
+        raw_id = attrs.get("identifier") or attrs.get("identity") or attrs.get("email") or attrs.get("phone_number") or ""
+        identifier = str(raw_id).strip()
 
         password = attrs.get("password")
 
+        if not identifier or not password:
+            raise serializers.ValidationError(
+                {
+                    "detail": "Both phone/email and password are required."
+                }
+            )
+
         # ---------------------------------------------
-        # Find by phone
+        # Find by phone or email
         # ---------------------------------------------
 
         user = User.objects.filter(
             phone_number=identifier
         ).first()
-
-        # ---------------------------------------------
-        # If not phone, find by email
-        # ---------------------------------------------
 
         if not user:
             user = User.objects.filter(
@@ -310,11 +313,13 @@ class CustomTokenObtainPairSerializer(
             raise serializers.ValidationError(
                 {
                     "detail": (
-                        "Invalid phone number/email "
-                        "or password."
+                        "Invalid credentials. Please check your phone/email and password."
                     )
                 }
             )
+
+        attrs["user"] = user
+        return attrs
 
         # ---------------------------------------------
         # Account status

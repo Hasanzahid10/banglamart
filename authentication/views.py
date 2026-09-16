@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import models
 from django.utils import timezone
 
 from rest_framework import permissions, status, viewsets
@@ -39,10 +40,35 @@ class AuthViewSet(viewsets.ViewSet):
     POST /token/refresh/
     POST /otp/send/
     POST /otp/verify/
+    POST /check-user/
     """
 
     permission_classes = [permissions.AllowAny]
     serializer_class = RegisterSerializer
+
+    # =========================================================
+    # CHECK USER REGISTRATION STATUS
+    # =========================================================
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="check-user",
+    )
+    def check_user(self, request):
+        identity = request.data.get("identity") or request.data.get("phone_number") or request.data.get("email")
+        if not identity:
+            return Response({"error": "identity is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        identity_str = str(identity).strip()
+        user_exists = User.objects.filter(
+            models.Q(phone_number__icontains=identity_str) | models.Q(email__iexact=identity_str)
+        ).exists()
+
+        return Response({
+            "identity": identity_str,
+            "is_registered": user_exists
+        }, status=status.HTTP_200_OK)
 
     # =========================================================
     # REGISTER

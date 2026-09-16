@@ -1,0 +1,249 @@
+[
+  {
+    "name_en": "Grocery & Cooking",
+    "name_bn": "মুদি ও রান্না",
+    "slug": "grocery-and-cooking",
+    "display_order": 1,
+    "is_featured": true,
+    "children": [
+      {
+        "name_en": "Rice & Grains",
+        "name_bn": "চাল ও শস্য",
+        "slug": "rice-and-grains"
+      },
+      {
+        "name_en": "Dal & Pulses",
+        "name_bn": "ডাল ও কলাই",
+        "slug": "dal-and-pulses"
+      },
+      {
+        "name_en": "Edible Oil & Ghee",
+        "name_bn": "ভোজ্যতেল ও ঘি",
+        "slug": "edible-oil-and-ghee"
+      },
+      {
+        "name_en": "Spices & Masala",
+        "name_bn": "মসলা ও মসলা গুঁড়া",
+        "slug": "spices-and-masala"
+      },
+      {
+        "name_en": "Salt & Sugar",
+        "name_bn": "লবণ ও চিনি",
+        "slug": "salt-and-sugar"
+      },
+      {
+        "name_en": "Flour & Atta",
+        "name_bn": "আটা, ময়দা ও সুজি",
+        "slug": "flour-and-atta"
+      },
+      {
+        "name_en": "Sauces & Pickles",
+        "name_bn": "সস ও আচার",
+        "slug": "sauces-and-pickles"
+      }
+    ]
+  },
+  {
+    "name_en": "Fruits & Vegetables",
+    "name_bn": "ফল ও শাকসবজি",
+    "slug": "fruits-and-vegetables",
+    "display_order": 2,
+    "is_featured": true,
+    "children": [
+      {
+        "name_en": "Fresh Vegetables",
+        "name_bn": "তাজা শাকসবজি",
+        "slug": "fresh-vegetables"
+      },
+      {
+        "name_en": "Fresh Fruits",
+        "name_bn": "তাজা ফলমূল",
+        "slug": "fresh-fruits"
+      },
+      {
+        "name_en": "Organic Produce",
+        "name_bn": "অর্গানিক শাকসবজি",
+        "slug": "organic-produce"
+      }
+    ]
+  },
+  {
+    "name_en": "Meat & Fish",
+    "name_bn": "মাছ ও মাংস",
+    "slug": "meat-and-fish",
+    "display_order": 3,
+    "is_featured": true,
+    "children": [
+      {
+        "name_en": "Chicken & Poultry",
+        "name_bn": "মুরগি ও হাঁস",
+        "slug": "chicken-and-poultry"
+      },
+      {
+        "name_en": "Beef & Mutton",
+        "name_bn": "গরু ও খাসির মাংস",
+        "slug": "beef-and-mutton"
+      },
+      {
+        "name_en": "Fresh & Frozen Fish",
+        "name_bn": "তাজা ও হিমায়িত মাছ",
+        "slug": "fresh-and-frozen-fish"
+      },
+      {
+        "name_en": "Dried Fish (Shutki)",
+        "name_bn": "শুঁটকি মাছ",
+        "slug": "dried-fish-shutki"
+      }
+    ]
+  },
+  {
+    "name_en": "Dairy & Breakfast",
+    "name_bn": "ডেইরি ও নাস্তা",
+    "slug": "dairy-and-breakfast",
+    "display_order": 4,
+    "is_featured": true,
+    "children": [
+      {
+        "name_en": "Farm Fresh Eggs",
+        "name_bn": "ফার্মের ডিম",
+        "slug": "eggs"
+      },
+      {
+        "name_en": "Liquid & Powder Milk",
+        "name_bn": "দুধ ও গুঁড়ো দুধ",
+        "slug": "liquid-and-powder-milk"
+      },
+      {
+        "name_en": "Butter, Cheese & Yogurt",
+        "name_bn": "মাখন, পনির ও দই",
+        "slug": "butter-cheese-yogurt"
+      },
+      {
+        "name_en": "Bread, Toast & Bakery",
+        "name_bn": "পাউরুটি ও বেকারিসামগ্রী",
+        "slug": "bread-and-bakery"
+      },
+      {
+        "name_en": "Cereals & Oats",
+        "name_bn": "সিরিয়াল ও ওটস",
+        "slug": "cereals-and-oats"
+      }
+    ]
+  },
+  {
+    "name_en": "Snacks & Beverages",
+    "name_bn": "স্ন্যাক্স ও পানীয়",
+    "slug": "snacks-and-beverages",
+    "display_order": 5,
+    "is_featured": true,
+    "children": [
+      {
+        "name_en": "Biscuits & Cookies",
+        "name_bn": "বিস্কুট ও কুকিজ",
+        "slug": "biscuits-and-cookies"
+      },
+      {
+        "name_en": "Tea & Coffee",
+        "name_bn": "চা ও কফি",
+        "slug": "tea-and-coffee"
+      },
+      {
+        "name_en": "Chips & Chanachur",
+        "name_bn": "চিপস ও চানাচুর",
+        "slug": "chips-and-chanachur"
+      },
+      {
+        "name_en": "Noodles & Pasta",
+        "name_bn": "নুডুলস ও পাস্তা",
+        "slug": "noodles-and-pasta"
+      },
+      {
+        "name_en": "Chocolates & Candies",
+        "name_bn": "চকলেট ও ক্যান্ডি",
+        "slug": "chocolates-and-candies"
+      },
+      {
+        "name_en": "Soft Drinks & Juices",
+        "name_bn": "কোমল পানীয় ও জুস",
+        "slug": "soft-drinks-and-juices"
+      }
+    ]
+  },
+  {
+    "name_en": "Cleaning & Household",
+    "name_bn": "ক্লিনিং ও হাউস হোল্ড",
+    "slug": "cleaning-and-household",
+    "display_order": 6,
+    "is_featured": true,
+    "children": [
+      {
+        "name_en": "Dishwashing Supplies",
+        "name_bn": "ডিশওয়াশিং",
+        "slug": "dishwashing-supplies"
+      },
+      {
+        "name_en": "Laundry Detergent & Soap",
+        "name_bn": "ডিটারজেন্ট ও লন্ড্রি",
+        "slug": "laundry-detergent-and-soap"
+      },
+      {
+        "name_en": "Toilet & Floor Cleaners",
+        "name_bn": "টয়লেট ও ফ্লোর ক্লিনার",
+        "slug": "toilet-and-floor-cleaners"
+      },
+      {
+        "name_en": "Air Fresheners & Insect Control",
+        "name_bn": "এয়ার ফ্রেশনার ও মশানাশক",
+        "slug": "air-fresheners-insect-control"
+      }
+    ]
+  },
+  {
+    "name_en": "Personal Care & Health",
+    "name_bn": "পার্সোনাল কেয়ার ও হেলথ",
+    "slug": "personal-care-and-health",
+    "display_order": 7,
+    "is_featured": true,
+    "children": [
+      {
+        "name_en": "Bath & Body Soap",
+        "name_bn": "সাবান ও বডি ওয়াশ",
+        "slug": "bath-and-body-soap"
+      },
+      {
+        "name_en": "Hair Care & Shampoo",
+        "name_bn": "শ্যাম্পু ও চুলের যত্ন",
+        "slug": "hair-care-and-shampoo"
+      },
+      {
+        "name_en": "Oral Care & Toothpaste",
+        "name_bn": "টুথপেস্ট ও টুথব্রাশ",
+        "slug": "oral-care-and-toothpaste"
+      },
+      {
+        "name_en": "Skin Care & Creams",
+        "name_bn": "স্কিন কেয়ার ও ক্রিম",
+        "slug": "skin-care-and-creams"
+      }
+    ]
+  },
+  {
+    "name_en": "Baby Care",
+    "name_bn": "বেবি কেয়ার",
+    "slug": "baby-care",
+    "display_order": 8,
+    "is_featured": true,
+    "children": [
+      {
+        "name_en": "Baby Diapers & Wipes",
+        "name_bn": "ডায়াপার ও ওয়াইপস",
+        "slug": "baby-diapers-and-wipes"
+      },
+      {
+        "name_en": "Baby Food & Formula",
+        "name_bn": "শিশু খাদ্য ও ফর্মুলা",
+        "slug": "baby-food-and-formula"
+      }
+    ]
+  }
+]

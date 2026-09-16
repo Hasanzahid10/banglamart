@@ -419,8 +419,47 @@ class CartSerializer(serializers.ModelSerializer):
             "updated_at",
         )
 
-        read_only_fields = fields
+from .models import Cart, CartItem, GuestCart, GuestCartItem
 
-    def get_total_unique_items(self, obj) -> int:
 
-        return obj.items.count()
+class GuestCartItemSerializer(serializers.ModelSerializer):
+    product_id = serializers.ReadOnlyField(source="product.id", default=None)
+    subtotal = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = GuestCartItem
+        fields = (
+            "id",
+            "product_id",
+            "product_name",
+            "quantity",
+            "unit_price",
+            "subtotal",
+            "updated_at",
+        )
+
+
+class GuestCartSerializer(serializers.ModelSerializer):
+    items = GuestCartItemSerializer(many=True, read_only=True)
+    total_price = serializers.FloatField(read_only=True)
+    total_items = serializers.IntegerField(read_only=True)
+    user_phone = serializers.ReadOnlyField(source="user.phone", default=None)
+
+    class Meta:
+        model = GuestCart
+        fields = (
+            "id",
+            "guest_id",
+            "city",
+            "ip_address",
+            "device_info",
+            "browser",
+            "os",
+            "status",
+            "total_price",
+            "total_items",
+            "user_phone",
+            "items",
+            "created_at",
+            "updated_at",
+        )

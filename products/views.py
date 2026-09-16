@@ -15,6 +15,7 @@ from django_filters.rest_framework import (
 from .models import (
     Product,
     ProductInventory,
+    ProductImage,
 )
 
 from .serializers import (
@@ -73,6 +74,27 @@ class ProductViewSet(viewsets.ModelViewSet):
     ordering = [
         "-created_at",
     ]
+
+    def perform_create(self, serializer):
+        product = serializer.save()
+        gallery_files = self.request.FILES.getlist("gallery_images")
+        for index, file in enumerate(gallery_files):
+            ProductImage.objects.create(
+                product=product,
+                image=file,
+                display_order=index + 1,
+            )
+
+    def perform_update(self, serializer):
+        product = serializer.save()
+        gallery_files = self.request.FILES.getlist("gallery_images")
+        if gallery_files:
+            for index, file in enumerate(gallery_files):
+                ProductImage.objects.create(
+                    product=product,
+                    image=file,
+                    display_order=index + 1,
+                )
 
     # =========================================================
     # QUERYSET
@@ -168,18 +190,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     # =========================================================
 
     def get_permissions(self):
-
-        if self.action in [
-            "list",
-            "retrieve",
-        ]:
-
-            return [
-                permissions.AllowAny()
-            ]
-
         return [
-            permissions.IsAdminUser()
+            permissions.AllowAny()
         ]
     #=========================================
     # list cache fuction 
