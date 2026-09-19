@@ -15,6 +15,9 @@ from .serializers import CategoryTreeSerializer, CategoryCreateUpdateSerializer
 from drf_spectacular.utils import extend_schema
 
 
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
+
 class CategoryListView(APIView):
     """
     GET /api/catalog/categories/
@@ -26,6 +29,7 @@ class CategoryListView(APIView):
     permission_classes = [
         permissions.AllowAny,
     ]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     serializer_class = CategoryTreeSerializer
 
     @extend_schema(
@@ -35,19 +39,20 @@ class CategoryListView(APIView):
     def get(self, request, *args, **kwargs):
 
         # --------------------------------
-        # 1. Check Redis cache
+        # 1. Check Redis cache (Bypass if nocache=true)
         # --------------------------------
 
-        cached_data = cache.get(
-            CATEGORY_LIST_CACHE_KEY
-        )
-
-        if cached_data is not None:
-
-            return Response(
-                cached_data,
-                status=status.HTTP_200_OK,
+        nocache = request.query_params.get("nocache") == "true"
+        if not nocache:
+            cached_data = cache.get(
+                CATEGORY_LIST_CACHE_KEY
             )
+
+            if cached_data is not None:
+                return Response(
+                    cached_data,
+                    status=status.HTTP_200_OK,
+                )
 
         # --------------------------------
         # 2. Query database
@@ -104,42 +109,33 @@ class CategoryListView(APIView):
         responses={201: CategoryCreateUpdateSerializer}
     )
     def post(self, request, *args, **kwargs):
-        data = request.data.copy()
+        data = {}
+        for key in request.data:
+            data[key] = request.data.get(key)
+
+        # Support 'image' or 'icon' file uploads
+        if 'image' in request.FILES:
+            data['icon'] = request.FILES['image']
+            data['image'] = request.FILES['image']
+        elif 'icon' in request.FILES:
+            data['icon'] = request.FILES['icon']
+            data['image'] = request.FILES['icon']
+
+        if 'is_active' not in data or data.get('is_active') in (None, '', 'undefined'):
+            data['is_active'] = True
 
         parent_val = data.get("parent")
-        
-        # Helper to ensure Food root category exists
-        def get_or_create_food_root():
-            food_root, _ = Category.objects.get_or_create(
-                slug="food",
-                defaults={
-                    "name_en": "Food",
-                    "name_bn": "খাদ্যসামগ্রী",
-                    "parent": None,
-                    "display_order": 1,
-                    "is_active": True,
-                    "is_featured": True,
-                }
-            )
-            return food_root
-
-        name_en = data.get("name_en", "")
-        is_creating_food = str(name_en).strip().lower() == "food" or str(data.get("slug", "")).strip().lower() == "food"
-
-        if is_creating_food:
+        if not parent_val or parent_val in ("null", "undefined", None, ""):
             data["parent"] = None
-        elif not parent_val or parent_val in ("null", "undefined", None, ""):
-            food_root = get_or_create_food_root()
-            data["parent"] = food_root.id
         else:
             try:
                 parent_id = int(parent_val)
-                if not Category.objects.filter(pk=parent_id).exists():
-                    food_root = get_or_create_food_root()
-                    data["parent"] = food_root.id
+                if Category.objects.filter(pk=parent_id).exists():
+                    data["parent"] = parent_id
+                else:
+                    data["parent"] = None
             except (ValueError, TypeError):
-                food_root = get_or_create_food_root()
-                data["parent"] = food_root.id
+                data["parent"] = None
 
         serializer = CategoryCreateUpdateSerializer(data=data, context={"request": request})
         if serializer.is_valid():
@@ -172,6 +168,7 @@ class CategoryAdminDetailView(APIView):
     DELETE /api/catalog/categories/id/<int:pk>/
     """
     permission_classes = [permissions.AllowAny]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_object(self, pk):
         try:
@@ -190,7 +187,19 @@ class CategoryAdminDetailView(APIView):
         category = self.get_object(pk)
         if not category:
             return Response({"detail": "Category not found."}, status=status.HTTP_404_NOT_FOUND)
-        serializer = CategoryCreateUpdateSerializer(category, data=request.data, partial=True, context={"request": request})
+        
+        data = {}
+        for key in request.data:
+            data[key] = request.data.get(key)
+
+        if 'image' in request.FILES:
+            data['icon'] = request.FILES['image']
+            data['image'] = request.FILES['image']
+        elif 'icon' in request.FILES:
+            data['icon'] = request.FILES['icon']
+            data['image'] = request.FILES['icon']
+
+        serializer = CategoryCreateUpdateSerializer(category, data=data, partial=True, context={"request": request})
         if serializer.is_valid():
             serializer.save()
             cache.delete(CATEGORY_LIST_CACHE_KEY)
