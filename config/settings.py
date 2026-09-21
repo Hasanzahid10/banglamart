@@ -4,6 +4,7 @@ Django settings for config project.
 
 import ctypes
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -287,6 +288,7 @@ CLOUDINARY_STORAGE = {
     "API_KEY": CLOUDINARY_API_KEY,
     "API_SECRET": CLOUDINARY_API_SECRET,
     "MAGIC_FOLDERS": False,
+    "PREFIX": os.getenv("CLOUDINARY_FOLDER", "metrobazar"),
     "FOLDER": os.getenv("CLOUDINARY_FOLDER", "metrobazar"),
 }
 
@@ -310,7 +312,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # ============================================================
-# DRF
+# DRF & SIMPLE JWT (EXTENDED TOKEN LIFETIME)
 # ============================================================
 
 REST_FRAMEWORK = {
@@ -329,6 +331,23 @@ REST_FRAMEWORK = {
     ),
 
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=30),   # Token valid for 30 days
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=90),  # Refresh valid for 90 days
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "VERIFYING_KEY": None,
+    "AUDIENCE": None,
+    "ISSUER": None,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
 }
 
 
