@@ -724,6 +724,12 @@ class AuthViewSet(viewsets.ViewSet):
     )
     def me(self, request):
         user = request.user
+
+        # Auto-promote superuser to ADMIN role if currently CUSTOMER
+        if (user.is_superuser or user.is_staff) and user.role == User.Role.CUSTOMER:
+            user.role = User.Role.ADMIN
+            user.save(update_fields=["role"])
+
         if request.method == "GET":
             return Response(
                 {
@@ -746,18 +752,18 @@ class AuthViewSet(viewsets.ViewSet):
         first_name = data.get("first_name")
         last_name = data.get("last_name")
 
-        if email and email.strip():
-            email_clean = email.strip().lower()
-            if User.objects.filter(email__iexact=email_clean).exclude(id=user.id).exists():
+        if email is not None:
+            email_clean = email.strip().lower() if str(email).strip() else None
+            if email_clean and User.objects.filter(email__iexact=email_clean).exclude(id=user.id).exists():
                 return Response(
                     {"email": ["This email address is already in use by another account."]},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             user.email = email_clean
 
-        if phone_number and phone_number.strip():
-            phone_clean = phone_number.strip()
-            if User.objects.filter(phone_number=phone_clean).exclude(id=user.id).exists():
+        if phone_number is not None:
+            phone_clean = phone_number.strip() if str(phone_number).strip() else None
+            if phone_clean and User.objects.filter(phone_number=phone_clean).exclude(id=user.id).exists():
                 return Response(
                     {"phone_number": ["This phone number is already registered by another account."]},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -765,10 +771,10 @@ class AuthViewSet(viewsets.ViewSet):
             user.phone_number = phone_clean
 
         if first_name is not None:
-            user.first_name = first_name.strip()
+            user.first_name = str(first_name).strip()
 
         if last_name is not None:
-            user.last_name = last_name.strip()
+            user.last_name = str(last_name).strip()
 
         user.save()
 
