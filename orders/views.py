@@ -745,7 +745,7 @@ from rest_framework.views import APIView
 from decimal import Decimal
 import uuid
 from .models import OrderItem
-from logistics.models import DarkStore
+from logistics.models import DarkStore, ServiceArea, DeliveryOrder
 from products.models import ProductInventory
 from cart.models import GuestCart
 from django.contrib.auth import get_user_model
@@ -756,152 +756,184 @@ class PlaceOrderView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        data = request.data
-        customer_name = (data.get('customer_name') or '').strip() or 'Customer'
-        customer_phone = (data.get('customer_phone') or '').strip()
-        customer_email = (data.get('customer_email') or '').strip()
-        delivery_address = data.get('delivery_address', {})
-        cart_items = data.get('items', [])
-        
         try:
-            subtotal = Decimal(str(data.get('subtotal', 0)))
-            delivery_fee = Decimal(str(data.get('delivery_fee', 49)))
-            discount_amount = Decimal(str(data.get('discount_amount', 0)))
-            total_amount = Decimal(str(data.get('total_amount', subtotal + delivery_fee - discount_amount)))
-        except Exception:
-            subtotal = Decimal("0.00")
-            delivery_fee = Decimal("49.00")
-            discount_amount = Decimal("0.00")
-            total_amount = Decimal("49.00")
+            data = request.data
+            customer_name = (data.get('customer_name') or '').strip() or 'Customer'
+            customer_phone = (data.get('customer_phone') or '').strip()
+            customer_email = (data.get('customer_email') or '').strip()
+            delivery_address = data.get('delivery_address', {})
+            cart_items = data.get('items', [])
+            
+            try:
+                subtotal = Decimal(str(data.get('subtotal', 0)))
+                delivery_fee = Decimal(str(data.get('delivery_fee', 49)))
+                discount_amount = Decimal(str(data.get('discount_amount', 0)))
+                total_amount = Decimal(str(data.get('total_amount', subtotal + delivery_fee - discount_amount)))
+            except Exception:
+                subtotal = Decimal("0.00")
+                delivery_fee = Decimal("49.00")
+                discount_amount = Decimal("0.00")
+                total_amount = Decimal("49.00")
 
-        note = data.get('note', '')
+            note = data.get('note', '')
 
-        # Resolve user
-        user = None
-        if request.user and request.user.is_authenticated:
-            user = request.user
-        elif customer_phone:
-            user = User.objects.filter(phone_number=customer_phone).first()
-        if not user and customer_email:
-            user = User.objects.filter(email__iexact=customer_email).first()
+            # Resolve user
+            user = None
+            if request.user and request.user.is_authenticated:
+                user = request.user
+            elif customer_phone:
+                user = User.objects.filter(phone_number=customer_phone).first()
+            if not user and customer_email:
+                user = User.objects.filter(email__iexact=customer_email).first()
 
-        if not user and (customer_phone or customer_email):
-            clean_p = customer_phone.strip() if customer_phone else ''
-            clean_e = customer_email.strip() if customer_email else ''
-            if clean_p:
-                user = User.objects.filter(phone_number=clean_p).first()
-            if not user and clean_e:
-                user = User.objects.filter(email__iexact=clean_e).first()
+            if not user and (customer_phone or customer_email):
+                clean_p = customer_phone.strip() if customer_phone else ''
+                clean_e = customer_email.strip() if customer_email else ''
+                if clean_p:
+                    user = User.objects.filter(phone_number=clean_p).first()
+                if not user and clean_e:
+                    user = User.objects.filter(email__iexact=clean_e).first()
+                if not user:
+                    random_pass = uuid.uuid4().hex[:12]
+                    user = User.objects.create_user(
+                        phone_number=clean_p or None,
+                        email=clean_e or (f"{clean_p}@metrobazar.com" if clean_p else ""),
+                        first_name=customer_name,
+                        role="CUSTOMER",
+                        password=random_pass,
+                    )
+
             if not user:
-                random_pass = uuid.uuid4().hex[:12]
-                user = User.objects.create_user(
-                    phone_number=clean_p or None,
-                    email=clean_e or (f"{clean_p}@metrobazar.com" if clean_p else ""),
-                    first_name=customer_name,
-                    role="CUSTOMER",
-                    password=random_pass,
+                user = User.objects.filter(is_superuser=False).first() or User.objects.first()
+
+            if customer_phone and user and not user.phone_number:
+                user.phone_number = customer_phone
+                user.save(update_fields=['phone_number'])
+
+            # Ensure active dark store exists fallback
+            dark_store = DarkStore.objects.filter(is_active=True).first() or DarkStore.objects.first()
+            if not dark_store:
+                service_area, _ = ServiceArea.objects.get_or_create(
+                    code="RGP-01",
+                    defaults={"name": "Rangpur", "is_active": True}
+                )
+                dark_store, _ = DarkStore.objects.get_or_create(
+                    code="DS-RGP-01",
+                    defaults={
+                        "service_area": service_area,
+                        "name": "Rangpur Central Dark Store",
+                        "address": "Rangpur City Center",
+                        "contact_number": "01700000000",
+                        "is_active": True
+                    }
                 )
 
-        if not user:
-            user = User.objects.filter(is_superuser=False).first() or User.objects.first()
+            # Format unique Order Number
+            random_code = uuid.uuid4().hex[:8].upper()
+            order_number = f"ORD-{random_code}"
 
-        if customer_phone and user and not user.phone_number:
-            user.phone_number = customer_phone
-            user.save(update_fields=['phone_number'])
+            address_snapshot = {
+                "recipient_name": delivery_address.get('recipient_name') or customer_name,
+                "recipient_phone": delivery_address.get('recipient_phone') or customer_phone,
+                "street_address": delivery_address.get('street_address') or delivery_address.get('details') or "Address",
+                "area": delivery_address.get('area') or "Rangpur",
+                "city": delivery_address.get('city') or "Rangpur",
+            }
 
-        dark_store = DarkStore.objects.filter(is_active=True).first() or DarkStore.objects.first()
+            with transaction.atomic():
+                order = Order.objects.create(
+                    order_number=order_number,
+                    user=user,
+                    dark_store=dark_store,
+                    status=Order.OrderStatus.PROCESSING,
+                    payment_status=Order.PaymentStatus.UNPAID,
+                    subtotal=subtotal,
+                    delivery_fee=delivery_fee,
+                    discount_amount=discount_amount,
+                    total_amount=total_amount,
+                    delivery_address_snapshot=address_snapshot,
+                    note=note
+                )
 
-        # Format unique Order Number
-        random_code = uuid.uuid4().hex[:8].upper()
-        order_number = f"ORD-{random_code}"
+                for item in cart_items:
+                    p_id = item.get('id') or item.get('product_id')
+                    p_name = item.get('name') or item.get('product_name_en') or 'Product'
+                    p_price = Decimal(str(item.get('price') or item.get('unit_price') or 0))
+                    p_qty = int(item.get('quantity', 1))
+                    p_subtotal = Decimal(str(item.get('subtotal', p_price * p_qty)))
+                    p_unit = item.get('unit', '1 pc')
 
-        address_snapshot = {
-            "recipient_name": delivery_address.get('recipient_name') or customer_name,
-            "recipient_phone": delivery_address.get('recipient_phone') or customer_phone,
-            "street_address": delivery_address.get('street_address') or delivery_address.get('details') or "Address",
-            "area": delivery_address.get('area') or "Dhaka",
-            "city": delivery_address.get('city') or "Dhaka",
-        }
+                    inv = None
+                    if p_id:
+                        try:
+                            inv = ProductInventory.objects.filter(product_id=p_id).first()
+                            if not inv:
+                                inv = ProductInventory.objects.filter(id=p_id).first()
+                        except Exception:
+                            pass
+                    if not inv:
+                        inv = ProductInventory.objects.first()
 
-        with transaction.atomic():
-            order = Order.objects.create(
-                order_number=order_number,
-                user=user,
-                dark_store=dark_store,
-                status=Order.OrderStatus.PROCESSING,
-                payment_status=Order.PaymentStatus.UNPAID,
-                subtotal=subtotal,
-                delivery_fee=delivery_fee,
-                discount_amount=discount_amount,
-                total_amount=total_amount,
-                delivery_address_snapshot=address_snapshot,
-                note=note
-            )
-
-            for item in cart_items:
-                p_id = item.get('id') or item.get('product_id')
-                p_name = item.get('name') or item.get('product_name_en') or 'Product'
-                p_price = Decimal(str(item.get('price') or item.get('unit_price') or 0))
-                p_qty = int(item.get('quantity', 1))
-                p_subtotal = Decimal(str(item.get('subtotal', p_price * p_qty)))
-                p_unit = item.get('unit', '1 pc')
-
-                inv = None
-                if p_id:
-                    try:
-                        inv = ProductInventory.objects.filter(product_id=p_id).first()
-                        if not inv:
-                            inv = ProductInventory.objects.filter(id=p_id).first()
-                    except Exception:
-                        pass
-                if not inv:
-                    inv = ProductInventory.objects.first()
-
-                if not inv:
-                    # Fallback inventory creation if database ProductInventory table is empty
-                    from products.models import Product as ProdModel
-                    prod = ProdModel.objects.first()
-                    if not prod:
-                        prod = ProdModel.objects.create(
-                            name_en=p_name,
-                            slug=f"prod-{uuid.uuid4().hex[:6]}",
-                            base_price=p_price if p_price > 0 else Decimal("100.00"),
-                            unit=p_unit
-                        )
-                    if not dark_store:
-                        dark_store = DarkStore.objects.first()
-                    if dark_store:
+                    if not inv:
+                        # Fallback inventory creation if database ProductInventory table is empty
+                        from products.models import Product as ProdModel
+                        prod = ProdModel.objects.first()
+                        if not prod:
+                            prod = ProdModel.objects.create(
+                                name_en=p_name,
+                                slug=f"prod-{uuid.uuid4().hex[:6]}",
+                                base_price=p_price if p_price > 0 else Decimal("100.00"),
+                                unit=p_unit
+                            )
                         inv, _ = ProductInventory.objects.get_or_create(
                             dark_store=dark_store,
                             product=prod,
                             defaults={"stock_qty": 999, "is_available": True}
                         )
 
-                OrderItem.objects.create(
-                    order=order,
-                    inventory=inv,
-                    product_name_en=p_name,
-                    sku=inv.product.sku if (inv and inv.product) else 'SKU-001',
-                    unit=p_unit,
-                    unit_price=p_price,
-                    quantity=p_qty,
-                    subtotal=p_subtotal,
-                    dark_store_name=dark_store.name if dark_store else '',
-                )
+                    OrderItem.objects.create(
+                        order=order,
+                        inventory=inv,
+                        product_name_en=p_name,
+                        sku=inv.product.sku if (inv and inv.product) else 'SKU-001',
+                        unit=p_unit,
+                        unit_price=p_price,
+                        quantity=p_qty,
+                        subtotal=p_subtotal,
+                        dark_store_name=dark_store.name if dark_store else '',
+                    )
 
-            # Mark user's active guest cart as CONVERTED
-            if user:
-                GuestCart.objects.filter(user=user, status='ACTIVE').update(status='CONVERTED')
+                # Auto-create DeliveryOrder for logistics & riders
+                try:
+                    DeliveryOrder.objects.create(
+                        user=user,
+                        dark_store=dark_store,
+                        tracking_number=f"TRK-{order_number}",
+                        status=DeliveryOrder.Status.PENDING
+                    )
+                except Exception:
+                    pass
 
-        # Trigger real-time email notification to Admin (admin@metrobazar.online -> metrobazar2025@gmail.com)
-        try:
-            from .emails import send_admin_order_notification_email
-            send_admin_order_notification_email(order)
-        except Exception as err:
-            pass
+                # Mark user's active guest cart as CONVERTED
+                if user:
+                    GuestCart.objects.filter(user=user, status='ACTIVE').update(status='CONVERTED')
 
-        return Response({
-            "message": "Order created successfully",
-            "order_number": order.order_number,
-            "order": OrderSerializer(order, context={'request': request}).data
-        }, status=status.HTTP_201_CREATED)
+            # Trigger real-time email notification to Admin (admin@metrobazar.online -> metrobazar2025@gmail.com)
+            try:
+                from .emails import send_admin_order_notification_email
+                send_admin_order_notification_email(order)
+            except Exception as err:
+                pass
+
+            return Response({
+                "message": "Order created successfully",
+                "order_number": order.order_number,
+                "order": OrderSerializer(order, context={'request': request}).data
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as main_err:
+            import traceback
+            traceback.print_exc()
+            return Response({
+                "detail": f"Failed to place order: {str(main_err)}"
+            }, status=status.HTTP_400_BAD_REQUEST)
