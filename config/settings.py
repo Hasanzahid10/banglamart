@@ -277,16 +277,11 @@ if (BASE_DIR / "static").exists():
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Cloudinary Environment Credentials
-CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "dgbhx89au")
-CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "786619224475667")
-CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "Ez9f892aBjooX0zTvP9G-IxFbAU")
-CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "")
-
+# Cloudinary Storage Configuration
 CLOUDINARY_STORAGE = {
-    "CLOUD_NAME": CLOUDINARY_CLOUD_NAME,
-    "API_KEY": CLOUDINARY_API_KEY,
-    "API_SECRET": CLOUDINARY_API_SECRET,
+    "CLOUD_NAME": os.getenv("CLOUDINARY_CLOUD_NAME", "dgbhx89au"),
+    "API_KEY": os.getenv("CLOUDINARY_API_KEY", "786619224475667"),
+    "API_SECRET": os.getenv("CLOUDINARY_API_SECRET", "Ez9f892aBjooX0zTvP9G-IxFbAU"),
     "MAGIC_FOLDERS": False,
     "FOLDER": "metrobazar",
 }
