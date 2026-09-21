@@ -1,8 +1,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 import uuid
 
-from django.contrib.gis.db.models.functions import Distance
-from django.contrib.gis.geos import Point
+from .gis_compat import Distance, Point, HAS_GIS, calculate_haversine_km
 from rest_framework import serializers
 
 from accounts.models import Address
@@ -318,43 +317,55 @@ class CreateDeliveryOrderSerializer(serializers.Serializer):
         # =====================================================
         # CALCULATE DISTANCE
         # =====================================================
+        # CALCULATE DISTANCE (GIS OR HAVERSINE FALLBACK)
+        # =====================================================
 
-        store_obj = (
-            DarkStore.objects
-            .filter(
+        if HAS_GIS and Distance:
+            store_obj = (
+                DarkStore.objects
+                .filter(
+                    id=dark_store.id,
+                    is_active=True,
+                    service_area__is_active=True,
+                    location__isnull=False,
+                )
+                .annotate(
+                    distance=Distance(
+                        "location",
+                        user_point,
+                    )
+                )
+                .first()
+            )
+            if store_obj and getattr(store_obj, 'distance', None):
+                distance_km = Decimal(
+                    str(store_obj.distance.km)
+                ).quantize(
+                    Decimal("0.01"),
+                    rounding=ROUND_HALF_UP,
+                )
+            else:
+                distance_km = Decimal("5.00")
+        else:
+            store_obj = DarkStore.objects.filter(
                 id=dark_store.id,
                 is_active=True,
                 service_area__is_active=True,
-                location__isnull=False,
-            )
-            .annotate(
-                distance=Distance(
-                    "location",
-                    user_point,
+            ).first()
+
+            if not store_obj:
+                raise serializers.ValidationError({
+                    "location": "Unable to determine the serving dark store."
+                })
+
+            # Pure Python Haversine calculation if location coords provided
+            if store_obj.location and isinstance(store_obj.location, dict) and "lat" in store_obj.location and latitude and longitude:
+                distance_km = calculate_haversine_km(
+                    latitude, longitude,
+                    store_obj.location.get("lat"), store_obj.location.get("lng")
                 )
-            )
-            .first()
-        )
-
-        if not store_obj:
-
-            raise serializers.ValidationError({
-                "location": (
-                    "Unable to determine the serving "
-                    "dark store."
-                )
-            })
-
-        # -----------------------------------------------------
-        # Distance in KM
-        # -----------------------------------------------------
-
-        distance_km = Decimal(
-            str(store_obj.distance.km)
-        ).quantize(
-            Decimal("0.01"),
-            rounding=ROUND_HALF_UP,
-        )
+            else:
+                distance_km = Decimal("5.00")
 
         # =====================================================
         # DELIVERY FEE

@@ -53,6 +53,15 @@ ALLOWED_HOSTS = [
 ]
 
 
+# Check GDAL availability
+try:
+    from django.contrib.gis.gdal import HAS_GDAL
+except Exception:
+    HAS_GDAL = False
+
+USE_GIS = HAS_GDAL and os.getenv("USE_GIS", "False").lower() in ("true", "1", "yes")
+
+
 # ============================================================
 # APPLICATIONS
 # ============================================================
@@ -65,10 +74,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+]
 
-    # GIS / PostGIS
-    "django.contrib.gis",
+if USE_GIS:
+    INSTALLED_APPS.append("django.contrib.gis")
 
+INSTALLED_APPS += [
     # Third-party
     "rest_framework",
     "rest_framework_simplejwt",
@@ -166,12 +177,17 @@ AUTH_USER_MODEL = "authentication.User"
 
 
 # ============================================================
-# DATABASE (PostgreSQL + PostGIS Only)
+# DATABASE
 # ============================================================
+
+if USE_GIS:
+    DB_ENGINE_DEFAULT = "django.contrib.gis.db.backends.postgis"
+else:
+    DB_ENGINE_DEFAULT = "django.db.backends.postgresql"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.contrib.gis.db.backends.postgis",
+        "ENGINE": os.getenv("DB_ENGINE", DB_ENGINE_DEFAULT),
         "NAME": os.getenv("DB_NAME", "banglamartdb"),
         "USER": os.getenv("DB_USERNAME", "banglamart"),
         "PASSWORD": os.getenv("DB_PASSWORD", "banglamartpass"),

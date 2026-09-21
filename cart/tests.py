@@ -1,5 +1,5 @@
 from django.urls import reverse
-from django.contrib.gis.geos import Point
+from logistics.gis_compat import Point
 from rest_framework import status
 from rest_framework.test import APITestCase
 

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.contrib.gis.admin import GISModelAdmin
+from .gis_compat import GISModelAdmin
 
 from .models import DarkStore, DeliveryZone, DeliverySlot, DeliveryOrder
 
