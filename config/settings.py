@@ -67,6 +67,9 @@ USE_GIS = HAS_GDAL and os.getenv("USE_GIS", "False").lower() in ("true", "1", "y
 # ============================================================
 
 INSTALLED_APPS = [
+    # Cloudinary storage (must be before staticfiles)
+    "cloudinary_storage",
+
     # Django
     "django.contrib.admin",
     "django.contrib.auth",
@@ -74,6 +77,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    # Cloudinary SDK
+    "cloudinary",
 ]
 
 if USE_GIS:
@@ -265,12 +271,39 @@ if (BASE_DIR / "static").exists():
 
 
 # ============================================================
-# MEDIA FILES
+# MEDIA FILES & CLOUDINARY STORAGE
 # ============================================================
 
 MEDIA_URL = "/media/"
-
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Cloudinary Environment Credentials
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "")
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "")
+
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": CLOUDINARY_CLOUD_NAME,
+    "API_KEY": CLOUDINARY_API_KEY,
+    "API_SECRET": CLOUDINARY_API_SECRET,
+}
+
+# Auto-enable Cloudinary Media Storage if credentials exist
+USE_CLOUDINARY = bool(
+    CLOUDINARY_URL or (CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET)
+)
+
+if USE_CLOUDINARY:
+    DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+    STORAGES = {
+        "default": {
+            "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 
 
 # ============================================================
