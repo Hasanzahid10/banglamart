@@ -712,4 +712,129 @@ class AuthViewSet(viewsets.ViewSet):
             status=status.HTTP_200_OK,
         )
 
+    # =========================================================
+    # ME (GET & UPDATE CURRENT USER PROFILE)
+    # =========================================================
+
+    @action(
+        detail=False,
+        methods=["get", "patch", "put"],
+        url_path="me",
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def me(self, request):
+        user = request.user
+        if request.method == "GET":
+            return Response(
+                {
+                    "id": user.id,
+                    "phone_number": user.phone_number,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "role": user.role,
+                    "is_superuser": user.is_superuser,
+                    "is_staff": user.is_staff,
+                    "created_at": getattr(user, "created_at", None),
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        data = request.data
+        email = data.get("email")
+        phone_number = data.get("phone_number")
+        first_name = data.get("first_name")
+        last_name = data.get("last_name")
+
+        if email and email.strip():
+            email_clean = email.strip().lower()
+            if User.objects.filter(email__iexact=email_clean).exclude(id=user.id).exists():
+                return Response(
+                    {"email": ["This email address is already in use by another account."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.email = email_clean
+
+        if phone_number and phone_number.strip():
+            phone_clean = phone_number.strip()
+            if User.objects.filter(phone_number=phone_clean).exclude(id=user.id).exists():
+                return Response(
+                    {"phone_number": ["This phone number is already registered by another account."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.phone_number = phone_clean
+
+        if first_name is not None:
+            user.first_name = first_name.strip()
+
+        if last_name is not None:
+            user.last_name = last_name.strip()
+
+        user.save()
+
+        return Response(
+            {
+                "message": "Profile updated successfully.",
+                "user": {
+                    "id": user.id,
+                    "phone_number": user.phone_number,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "role": user.role,
+                    "is_superuser": user.is_superuser,
+                    "is_staff": user.is_staff,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    # =========================================================
+    # CHANGE PASSWORD
+    # =========================================================
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="change-password",
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def change_password(self, request):
+        user = request.user
+        old_password = request.data.get("old_password")
+        new_password = request.data.get("new_password")
+        confirm_password = request.data.get("confirm_password")
+
+        if not old_password or not new_password:
+            return Response(
+                {"detail": "Both old password and new password are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not user.check_password(old_password):
+            return Response(
+                {"old_password": ["Current password is incorrect."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if new_password != confirm_password:
+            return Response(
+                {"confirm_password": ["New password and confirm password do not match."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(new_password) < 4:
+            return Response(
+                {"new_password": ["New password must be at least 4 characters long."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+
+        return Response(
+            {"message": "Password updated successfully. Please use your new password next time you log in."},
+            status=status.HTTP_200_OK,
+        )
+
 
