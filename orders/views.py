@@ -810,20 +810,20 @@ class PlaceOrderView(APIView):
                 user.phone_number = customer_phone
                 user.save(update_fields=['phone_number'])
 
-            # Ensure active dark store exists fallback
+            # Ensure active main store hub exists fallback
             dark_store = DarkStore.objects.filter(is_active=True).first() or DarkStore.objects.first()
             if not dark_store:
                 service_area, _ = ServiceArea.objects.get_or_create(
-                    code="RGP-01",
-                    defaults={"name": "Rangpur", "is_active": True}
+                    code="METRO-SA-01",
+                    defaults={"name": "Metro Bazar Service Area", "is_active": True}
                 )
                 dark_store, _ = DarkStore.objects.get_or_create(
-                    code="DS-RGP-01",
+                    code="METRO-HUB-01",
                     defaults={
                         "service_area": service_area,
-                        "name": "Rangpur Central Dark Store",
-                        "address": "Rangpur City Center",
-                        "contact_number": "01700000000",
+                        "name": "Metro Bazar Central Warehouse",
+                        "address": "Metro Bazar Main Office & Fulfillment Center",
+                        "contact_number": "01752084015",
                         "is_active": True
                     }
                 )
