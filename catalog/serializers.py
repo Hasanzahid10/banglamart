@@ -10,6 +10,7 @@ class SubCategorySerializer(serializers.ModelSerializer):
     """
 
     children = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
@@ -20,6 +21,7 @@ class SubCategorySerializer(serializers.ModelSerializer):
             "name_bn",
             "slug",
             "icon",
+            "image",
             "display_order",
             "is_active",
             "children",
@@ -28,6 +30,13 @@ class SubCategorySerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
         ]
+
+    def get_image(self, obj):
+        img = obj.icon or obj.banner
+        if img:
+            request = self.context.get('request')
+            return request.build_absolute_uri(img.url) if request else img.url
+        return None
 
     def get_children(self, obj):
         """
@@ -57,6 +66,7 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
     """
 
     children = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
@@ -68,6 +78,7 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
             "slug",
             "icon",
             "banner",
+            "image",
             "is_active",
             "is_featured",
             "display_order",
@@ -77,6 +88,13 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
         ]
+
+    def get_image(self, obj):
+        img = obj.icon or obj.banner
+        if img:
+            request = self.context.get('request')
+            return request.build_absolute_uri(img.url) if request else img.url
+        return None
 
     @extend_schema_field(SubCategorySerializer(many=True))
     def get_children(self, obj):
@@ -97,7 +115,10 @@ class CategoryCreateUpdateSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
+    is_active = serializers.BooleanField(default=True, required=False)
+    is_featured = serializers.BooleanField(default=True, required=False)
     icon = serializers.ImageField(required=False, allow_null=True)
+    image = serializers.ImageField(required=False, allow_null=True, write_only=True)
 
     class Meta:
         model = Category
@@ -111,11 +132,26 @@ class CategoryCreateUpdateSerializer(serializers.ModelSerializer):
             "is_active",
             "is_featured",
             "icon",
+            "image",
         ]
         read_only_fields = ["id", "slug"]
 
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        request = self.context.get('request')
+        img = instance.icon or instance.banner
+        if img:
+            rep['image'] = request.build_absolute_uri(img.url) if request else img.url
+        else:
+            rep['image'] = None
+        return rep
+
     def create(self, validated_data):
         from django.utils.text import slugify
+        image = validated_data.pop("image", None)
+        if image and not validated_data.get("icon"):
+            validated_data["icon"] = image
+
         name_en = validated_data.get("name_en", "")
         base_slug = slugify(name_en) if name_en else "category"
         slug = base_slug
@@ -127,6 +163,10 @@ class CategoryCreateUpdateSerializer(serializers.ModelSerializer):
         return Category.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        image = validated_data.pop("image", None)
+        if image:
+            validated_data["icon"] = image
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()

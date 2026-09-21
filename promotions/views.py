@@ -16,9 +16,9 @@ from .serializers import (
 )
 
 
-class BannerViewSet(viewsets.ReadOnlyModelViewSet):
+class BannerViewSet(viewsets.ModelViewSet):
     """
-    Public banners.
+    Public & Admin Banner Management API.
 
     Global banner:
         dark_store = NULL
@@ -36,20 +36,32 @@ class BannerViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
 
         now = timezone.now()
+        include_all = self.request.query_params.get("all") == "true"
 
-        queryset = (
-            Banner.objects
-            .filter(
-                is_active=True,
-                start_date__lte=now,
-                end_date__gte=now,
+        if include_all or self.action in ["create", "update", "partial_update", "destroy"]:
+            queryset = (
+                Banner.objects
+                .all()
+                .select_related("dark_store")
+                .order_by(
+                    "display_order",
+                    "-created_at",
+                )
             )
-            .select_related("dark_store")
-            .order_by(
-                "display_order",
-                "-created_at",
+        else:
+            queryset = (
+                Banner.objects
+                .filter(
+                    is_active=True,
+                    start_date__lte=now,
+                    end_date__gte=now,
+                )
+                .select_related("dark_store")
+                .order_by(
+                    "display_order",
+                    "-created_at",
+                )
             )
-        )
 
         # --------------------------------------------------
         # DARK STORE FILTER

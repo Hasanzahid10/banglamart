@@ -707,10 +707,16 @@ class CheckoutSerializer(serializers.Serializer):
         )
 
         # ====================================================
-        # 11. CLEAR CART
+        # 11. CLEAR CART & NOTIFY ADMIN EMAIL
         # ====================================================
 
         cart.items.all().delete()
+
+        try:
+            from .emails import send_admin_order_notification_email
+            send_admin_order_notification_email(order)
+        except Exception:
+            pass
 
         return order
 

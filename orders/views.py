@@ -788,17 +788,18 @@ class PlaceOrderView(APIView):
         if not user and (customer_phone or customer_email):
             clean_p = customer_phone.strip() if customer_phone else ''
             clean_e = customer_email.strip() if customer_email else ''
-            uname = clean_p or clean_e
-            user = User.objects.filter(username=uname).first()
+            if clean_p:
+                user = User.objects.filter(phone_number=clean_p).first()
+            if not user and clean_e:
+                user = User.objects.filter(email__iexact=clean_e).first()
             if not user:
-                user, _ = User.objects.get_or_create(
-                    username=uname,
-                    defaults={
-                        'phone_number': clean_p or None,
-                        'email': clean_e or (f"{clean_p}@metrobazar.com" if clean_p else ""),
-                        'first_name': customer_name,
-                        'role': "CUSTOMER",
-                    }
+                random_pass = uuid.uuid4().hex[:12]
+                user = User.objects.create_user(
+                    phone_number=clean_p or None,
+                    email=clean_e or (f"{clean_p}@metrobazar.com" if clean_p else ""),
+                    first_name=customer_name,
+                    role="CUSTOMER",
+                    password=random_pass,
                 )
 
         if not user:
@@ -849,10 +850,32 @@ class PlaceOrderView(APIView):
                 if p_id:
                     try:
                         inv = ProductInventory.objects.filter(product_id=p_id).first()
+                        if not inv:
+                            inv = ProductInventory.objects.filter(id=p_id).first()
                     except Exception:
                         pass
                 if not inv:
                     inv = ProductInventory.objects.first()
+
+                if not inv:
+                    # Fallback inventory creation if database ProductInventory table is empty
+                    from products.models import Product as ProdModel
+                    prod = ProdModel.objects.first()
+                    if not prod:
+                        prod = ProdModel.objects.create(
+                            name_en=p_name,
+                            slug=f"prod-{uuid.uuid4().hex[:6]}",
+                            base_price=p_price if p_price > 0 else Decimal("100.00"),
+                            unit=p_unit
+                        )
+                    if not dark_store:
+                        dark_store = DarkStore.objects.first()
+                    if dark_store:
+                        inv, _ = ProductInventory.objects.get_or_create(
+                            dark_store=dark_store,
+                            product=prod,
+                            defaults={"stock_qty": 999, "is_available": True}
+                        )
 
                 OrderItem.objects.create(
                     order=order,
@@ -869,6 +892,13 @@ class PlaceOrderView(APIView):
             # Mark user's active guest cart as CONVERTED
             if user:
                 GuestCart.objects.filter(user=user, status='ACTIVE').update(status='CONVERTED')
+
+        # Trigger real-time email notification to Admin (admin@metrobazar.online -> metrobazar2025@gmail.com)
+        try:
+            from .emails import send_admin_order_notification_email
+            send_admin_order_notification_email(order)
+        except Exception as err:
+            pass
 
         return Response({
             "message": "Order created successfully",
