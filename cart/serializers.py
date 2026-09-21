@@ -392,7 +392,8 @@ class CartSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
-    total_unique_items = serializers.SerializerMethodField()
+    def get_total_unique_items(self, obj):
+        return obj.items.count() if hasattr(obj, "items") else 0
 
     dark_store_name = serializers.ReadOnlyField(
         source="dark_store.name"
@@ -443,7 +444,7 @@ class GuestCartSerializer(serializers.ModelSerializer):
     items = GuestCartItemSerializer(many=True, read_only=True)
     total_price = serializers.FloatField(read_only=True)
     total_items = serializers.IntegerField(read_only=True)
-    user_phone = serializers.ReadOnlyField(source="user.phone", default=None)
+    user_phone = serializers.ReadOnlyField(source="user.phone_number", default=None)
 
     class Meta:
         model = GuestCart

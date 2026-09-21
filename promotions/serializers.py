@@ -4,12 +4,18 @@ from products.models import Product
 from .models import Banner, FlashSale, FlashSaleItem
 
 
+import datetime
+from django.utils import timezone
+
 class BannerSerializer(serializers.ModelSerializer):
 
     dark_store_name = serializers.CharField(
         source="dark_store.name",
         read_only=True,
     )
+
+    start_date = serializers.DateTimeField(required=False, default=timezone.now)
+    end_date = serializers.DateTimeField(required=False, allow_null=True)
 
     class Meta:
         model = Banner
@@ -44,6 +50,12 @@ class BannerSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+
+    def create(self, validated_data):
+        if not validated_data.get("end_date"):
+            start = validated_data.get("start_date") or timezone.now()
+            validated_data["end_date"] = start + datetime.timedelta(days=365)
+        return super().create(validated_data)
 
 
 class FlashSaleItemSerializer(serializers.ModelSerializer):
