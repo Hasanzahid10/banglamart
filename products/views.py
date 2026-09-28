@@ -1,7 +1,7 @@
 from django.db.models import Prefetch
 from django.core.cache import cache
 
-from rest_framework import permissions, viewsets
+from rest_framework import permissions, viewsets, status
 from rest_framework.response import Response
 from rest_framework.filters import (
     SearchFilter,
@@ -95,6 +95,41 @@ class ProductViewSet(viewsets.ModelViewSet):
                     image=file,
                     display_order=index + 1,
                 )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        try:
+            if hasattr(instance, 'images'):
+                instance.images.all().delete()
+            if hasattr(instance, 'inventories'):
+                instance.inventories.all().delete()
+            if hasattr(instance, 'wishlist_items'):
+                instance.wishlist_items.all().delete()
+            if hasattr(instance, 'flash_sale_items'):
+                instance.flash_sale_items.all().delete()
+            instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            from django.db.models import ProtectedError
+            if isinstance(e, ProtectedError):
+                try:
+                    for rel in instance._meta.get_fields():
+                        if rel.one_to_many or rel.many_to_many:
+                            try:
+                                getattr(instance, rel.get_accessor_name()).all().delete()
+                            except Exception:
+                                pass
+                    instance.delete()
+                    return Response(status=status.HTTP_204_NO_CONTENT)
+                except Exception as inner_err:
+                    return Response(
+                        {"detail": f"Cannot delete product with existing records: {str(inner_err)}"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            return Response(
+                {"detail": f"Failed to delete product: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     # =========================================================
     # QUERYSET

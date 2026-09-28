@@ -213,7 +213,17 @@ class CategoryAdminDetailView(APIView):
         category = self.get_object(pk)
         if not category:
             return Response({"detail": "Category not found."}, status=status.HTTP_404_NOT_FOUND)
-        category.delete()
+        try:
+            category.delete()
+        except Exception as e:
+            from django.db.models import ProtectedError
+            if isinstance(e, ProtectedError):
+                descendants = category.get_descendants(include_self=True)
+                from products.models import Product
+                Product.objects.filter(category__in=descendants).delete()
+                category.delete()
+            else:
+                raise e
         cache.delete(CATEGORY_LIST_CACHE_KEY)
         return Response({"detail": "Category deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
