@@ -215,41 +215,58 @@ class CategoryAdminDetailView(APIView):
             return Response({"detail": "Category not found."}, status=status.HTTP_404_NOT_FOUND)
         try:
             descendants = category.get_descendants(include_self=True)
-            from products.models import Product
+            from products.models import Product, ProductImage, ProductInventory
+            from cart.models import CartItem
+            from wishlist.models import WishlistItem
+            from promotions.models import FlashSaleItem
+            from orders.models import OrderItem
+
             products = list(Product.objects.filter(category__in=descendants))
             for prod in products:
-                if hasattr(prod, 'images'):
+                # 1. Delete ProductImages
+                try:
+                    ProductImage.objects.filter(product=prod).delete()
+                except Exception:
+                    pass
+
+                # 2. Delete Wishlist & FlashSale items
+                try:
+                    WishlistItem.objects.filter(product=prod).delete()
+                except Exception:
+                    pass
+                try:
+                    FlashSaleItem.objects.filter(product=prod).delete()
+                except Exception:
+                    pass
+
+                # 3. Clean Inventories, CartItems & OrderItems FK
+                inv_ids = list(ProductInventory.objects.filter(product=prod).values_list('id', flat=True))
+                if inv_ids:
                     try:
-                        prod.images.all().delete()
+                        CartItem.objects.filter(inventory_id__in=inv_ids).delete()
                     except Exception:
                         pass
-                if hasattr(prod, 'inventories'):
-                    for inv in prod.inventories.all():
-                        try:
-                            inv.delete()
-                        except Exception:
-                            inv.is_available = False
-                            inv.save()
-                if hasattr(prod, 'wishlist_items'):
                     try:
-                        prod.wishlist_items.all().delete()
+                        OrderItem.objects.filter(inventory_id__in=inv_ids).update(inventory=None)
                     except Exception:
                         pass
-                if hasattr(prod, 'flash_sale_items'):
                     try:
-                        prod.flash_sale_items.all().delete()
+                        ProductInventory.objects.filter(product=prod).delete()
                     except Exception:
                         pass
+
+                # 4. Hard Delete Product
                 try:
                     prod.delete()
                 except Exception:
                     prod.is_active = False
                     prod.save()
 
+            # 5. Delete Category and all descendants from DB
             try:
-                category.delete()
+                descendants.delete()
             except Exception:
-                descendants.update(is_active=False)
+                category.delete()
 
             try:
                 Category.objects.rebuild()
@@ -257,10 +274,9 @@ class CategoryAdminDetailView(APIView):
                 pass
 
             cache.delete(CATEGORY_LIST_CACHE_KEY)
-            return Response({"detail": "Category deleted successfully."}, status=status.HTTP_200_OK)
+            return Response({"detail": "Category and all its products deleted successfully."}, status=status.HTTP_200_OK)
         except Exception as e:
-            console_log = str(e)
-            return Response({"detail": f"Failed to delete category: {console_log}"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": f"Failed to delete category: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CategoryDetailView(APIView):
