@@ -224,10 +224,12 @@ class CategoryAdminDetailView(APIView):
                     except Exception:
                         pass
                 if hasattr(prod, 'inventories'):
-                    try:
-                        prod.inventories.all().delete()
-                    except Exception:
-                        pass
+                    for inv in prod.inventories.all():
+                        try:
+                            inv.delete()
+                        except Exception:
+                            inv.is_available = False
+                            inv.save()
                 if hasattr(prod, 'wishlist_items'):
                     try:
                         prod.wishlist_items.all().delete()
@@ -241,32 +243,24 @@ class CategoryAdminDetailView(APIView):
                 try:
                     prod.delete()
                 except Exception:
-                    pass
+                    prod.is_active = False
+                    prod.save()
 
-            category.delete()
+            try:
+                category.delete()
+            except Exception:
+                descendants.update(is_active=False)
+
             try:
                 Category.objects.rebuild()
             except Exception:
                 pass
+
             cache.delete(CATEGORY_LIST_CACHE_KEY)
-            return Response({"detail": "Category deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+            return Response({"detail": "Category deleted successfully."}, status=status.HTTP_200_OK)
         except Exception as e:
-            from django.db.models import ProtectedError
-            if isinstance(e, ProtectedError):
-                try:
-                    for sub_cat in category.get_descendants(include_self=True):
-                        for rel in sub_cat._meta.get_fields():
-                            if rel.one_to_many or rel.many_to_many:
-                                try:
-                                    getattr(sub_cat, rel.get_accessor_name()).all().delete()
-                                except Exception:
-                                    pass
-                    category.delete()
-                    cache.delete(CATEGORY_LIST_CACHE_KEY)
-                    return Response({"detail": "Category deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
-                except Exception as inner_err:
-                    return Response({"detail": f"Cannot delete category: {str(inner_err)}"}, status=status.HTTP_400_BAD_REQUEST)
-            return Response({"detail": f"Failed to delete category: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            console_log = str(e)
+            return Response({"detail": f"Failed to delete category: {console_log}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CategoryDetailView(APIView):
