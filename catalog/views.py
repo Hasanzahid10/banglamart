@@ -214,18 +214,59 @@ class CategoryAdminDetailView(APIView):
         if not category:
             return Response({"detail": "Category not found."}, status=status.HTTP_404_NOT_FOUND)
         try:
+            descendants = category.get_descendants(include_self=True)
+            from products.models import Product
+            products = list(Product.objects.filter(category__in=descendants))
+            for prod in products:
+                if hasattr(prod, 'images'):
+                    try:
+                        prod.images.all().delete()
+                    except Exception:
+                        pass
+                if hasattr(prod, 'inventories'):
+                    try:
+                        prod.inventories.all().delete()
+                    except Exception:
+                        pass
+                if hasattr(prod, 'wishlist_items'):
+                    try:
+                        prod.wishlist_items.all().delete()
+                    except Exception:
+                        pass
+                if hasattr(prod, 'flash_sale_items'):
+                    try:
+                        prod.flash_sale_items.all().delete()
+                    except Exception:
+                        pass
+                try:
+                    prod.delete()
+                except Exception:
+                    pass
+
             category.delete()
+            try:
+                Category.objects.rebuild()
+            except Exception:
+                pass
+            cache.delete(CATEGORY_LIST_CACHE_KEY)
+            return Response({"detail": "Category deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             from django.db.models import ProtectedError
             if isinstance(e, ProtectedError):
-                descendants = category.get_descendants(include_self=True)
-                from products.models import Product
-                Product.objects.filter(category__in=descendants).delete()
-                category.delete()
-            else:
-                raise e
-        cache.delete(CATEGORY_LIST_CACHE_KEY)
-        return Response({"detail": "Category deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+                try:
+                    for sub_cat in category.get_descendants(include_self=True):
+                        for rel in sub_cat._meta.get_fields():
+                            if rel.one_to_many or rel.many_to_many:
+                                try:
+                                    getattr(sub_cat, rel.get_accessor_name()).all().delete()
+                                except Exception:
+                                    pass
+                    category.delete()
+                    cache.delete(CATEGORY_LIST_CACHE_KEY)
+                    return Response({"detail": "Category deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+                except Exception as inner_err:
+                    return Response({"detail": f"Cannot delete category: {str(inner_err)}"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": f"Failed to delete category: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CategoryDetailView(APIView):
